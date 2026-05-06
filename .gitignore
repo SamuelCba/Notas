@@ -1,0 +1,58 @@
+# ============================================
+# IGNORAR PLATAFORMAS QUE NO USAMOS
+# ============================================
+ios/
+macos/
+windows/
+linux/
+web/
+test/
+
+# ============================================
+# IGNORAR CARPETAS TEMPORALES/CACHÉ
+# ============================================
+build/
+.dart_tool/
+.pub/
+.pub-cache/
+.gradle/
+.cxx/
+*.lock
+*.log
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# ============================================
+# IGNORAR ARCHIVOS DE IDE
+# ============================================
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+
+# ============================================
+# IGNORAR ARCHIVOS DE ANDROID (pero no la carpeta)
+# ============================================
+android/local.properties
+android/*.iml
+android/.gradle/
+android/app/build/
+android/app/.cxx/
+android/app/src/debug/
+android/app/src/profile/
+
+# ============================================
+# IGNORAR OTROS INNECESARIOS
+# ============================================
+*.apk
+*.aab
+*.jar
+*.class
+*.so
+*.dll
+*.exe
+*.txt
+*.html
