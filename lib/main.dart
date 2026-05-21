@@ -503,7 +503,7 @@ class _NotesScreenState extends State<NotesScreen> {
                               color: _notesBlue,
                             ),
                             const SizedBox(width: 10),
-                            Icon(CupertinoIcons.ellipsis, size: 20, color: _notesBlue),
+                            const Icon(CupertinoIcons.ellipsis, size: 20, color: _notesBlue),
                           ],
                         ),
                       ),
