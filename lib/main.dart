@@ -89,6 +89,7 @@ class NotesScreen extends StatefulWidget {
 
 class _NotesScreenState extends State<NotesScreen> {
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _searchFocusNode = FocusNode();
   List<Note> notes = [];
   int _currentIndex = 0;
   bool _isMiniMode = false;
@@ -106,6 +107,7 @@ class _NotesScreenState extends State<NotesScreen> {
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -486,6 +488,25 @@ class _NotesScreenState extends State<NotesScreen> {
               interactionBehavior: GlassInteractionBehavior.full,
               glassSettings: _barGlassSettings,
               interactionGlowColor: _notesBlue,
+              searchConfig: GlassSearchBarConfig(
+                focusNode: _searchFocusNode,
+                autoFocusOnExpand: false,
+                showsCancelButton: false,
+                expandWhenActive: false,
+                hintText: 'Buscar notas',
+                onSearchToggle: (_) {},
+                searchIconColor: _notesBlue,
+                textInputAction: TextInputAction.search,
+                collapsedLogoBuilder: (context) {
+                  final tab = _tabs[_currentIndex];
+                  return Center(
+                    child: IconTheme(
+                      data: const IconThemeData(color: _notesBlue, size: 28),
+                      child: tab.activeIcon ?? tab.icon,
+                    ),
+                  );
+                },
+              ),
               tabs: _tabs,
             ),
           ),
