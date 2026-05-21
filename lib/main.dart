@@ -155,16 +155,16 @@ class _NotesScreenState extends State<NotesScreen> {
     });
   }
 
-  LiquidGlassSettings get _barGlassSettings => const LiquidGlassSettings(
-        glassColor: Color(0x72FFFFFF),
+  LiquidGlassSettings get _barGlassSettings => LiquidGlassSettings(
+        glassColor: widget.isDarkMode ? const Color(0xCC11161E) : const Color(0x72FFFFFF),
         thickness: 34,
         blur: 4,
         chromaticAberration: .01,
         lightAngle: GlassDefaults.lightAngle,
-        lightIntensity: .72,
+        lightIntensity: widget.isDarkMode ? .22 : .72,
         ambientStrength: 0,
         refractiveIndex: 1.2,
-        saturation: 1.28,
+        saturation: widget.isDarkMode ? 1.12 : 1.28,
         specularSharpness: GlassSpecularSharpness.medium,
       );
 
@@ -328,12 +328,24 @@ class _NotesScreenState extends State<NotesScreen> {
     return widget.isDarkMode ? const Color(0xFF161B22) : Colors.white;
   }
 
+  Color get _floatingPanelColor {
+    return widget.isDarkMode ? const Color(0xFF171E27) : Colors.white;
+  }
+
   Color get _primaryTextColor {
     return widget.isDarkMode ? const Color(0xFFF5F7FA) : Colors.black;
   }
 
   Color get _secondaryTextColor {
     return widget.isDarkMode ? const Color(0xFF9AA4B2) : Colors.grey.shade600;
+  }
+
+  Color get _mutedLabelColor {
+    return widget.isDarkMode ? const Color(0xFF8693A6) : Colors.grey.shade500;
+  }
+
+  Color get _dateColor {
+    return widget.isDarkMode ? const Color(0xFF7E8AA0) : Colors.grey.shade400;
   }
 
   @override
@@ -343,8 +355,12 @@ class _NotesScreenState extends State<NotesScreen> {
     final unpinnedNotes = visibleNotes.where((n) => !n.isPinned).toList();
     final collapse = (_scrollOffset / 72).clamp(0.0, 1.0);
     final largeTitleOpacity = (1 - collapse).clamp(0.0, 1.0);
-    final subtitleOpacity = (1 - collapse * 1.6).clamp(0.0, 1.0);
+    final subtitleOpacity = (1 - collapse * 1.9).clamp(0.0, 1.0);
     final smallTitleOpacity = collapse.clamp(0.0, 1.0);
+    final navProgress = Curves.easeOutCubic.transform(collapse);
+    final fullBarOpacity = (1 - navProgress * 1.25).clamp(0.0, 1.0);
+    final fullBarScale = 1 - navProgress * 0.16;
+    final miniBarOpacity = (navProgress * 1.25).clamp(0.0, 1.0);
     final topInset = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
@@ -407,7 +423,7 @@ class _NotesScreenState extends State<NotesScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.grey[500],
+                                  color: _mutedLabelColor,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -420,7 +436,7 @@ class _NotesScreenState extends State<NotesScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.grey[500],
+                                  color: _mutedLabelColor,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -434,7 +450,7 @@ class _NotesScreenState extends State<NotesScreen> {
                                     _searchQuery.trim().isEmpty ? 'Sin tareas' : 'Sin resultados',
                                     style: GoogleFonts.inter(
                                       fontSize: 15,
-                                      color: Colors.grey[500],
+                                      color: _mutedLabelColor,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -460,19 +476,19 @@ class _NotesScreenState extends State<NotesScreen> {
                     borderRadius: BorderRadius.circular(24),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: (widget.isDarkMode ? Colors.black : Colors.white).withValues(alpha: 0.68),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                          color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: Colors.white.withValues(
-                              alpha: widget.isDarkMode ? 0.14 : 0.72,
-                            ),
+                            color: widget.isDarkMode
+                                ? Colors.white.withValues(alpha: 0.10)
+                                : Colors.black.withValues(alpha: 0.06),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.blue.withValues(alpha: 0.08),
+                              color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.14 : 0.08),
                               blurRadius: 22,
                               offset: const Offset(0, 8),
                             ),
@@ -484,10 +500,10 @@ class _NotesScreenState extends State<NotesScreen> {
                             Icon(
                               _isSearching ? CupertinoIcons.xmark : CupertinoIcons.search,
                               size: 20,
-                              color: Colors.blue.shade600,
+                              color: _notesBlue,
                             ),
                             const SizedBox(width: 10),
-                            Icon(CupertinoIcons.ellipsis, size: 20, color: Colors.blue.shade600),
+                            Icon(CupertinoIcons.ellipsis, size: 20, color: _notesBlue),
                           ],
                         ),
                       ),
@@ -581,20 +597,30 @@ class _NotesScreenState extends State<NotesScreen> {
             left: 0,
             right: 0,
             bottom: 30,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 320),
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: ScaleTransition(
-                    scale: animation.drive(Tween(begin: 0.92, end: 1.0)),
-                    child: child,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                IgnorePointer(
+                  ignoring: fullBarOpacity < 0.06,
+                  child: Opacity(
+                    opacity: fullBarOpacity,
+                    child: Transform.scale(
+                      scale: fullBarScale,
+                      child: _buildFullBottomBar(),
+                    ),
                   ),
-                );
-              },
-              child: _isMiniMode ? _buildMiniBottomBar() : _buildFullBottomBar(),
+                ),
+                IgnorePointer(
+                  ignoring: miniBarOpacity < 0.08,
+                  child: Opacity(
+                    opacity: miniBarOpacity,
+                    child: Transform.scale(
+                      scale: 0.84 + navProgress * 0.16,
+                      child: _buildMiniBottomBar(),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -639,7 +665,7 @@ class _NotesScreenState extends State<NotesScreen> {
                 if (note.isPinned)
                   Icon(Icons.push_pin, size: 16, color: Colors.amber[700]),
                 PopupMenuButton(
-                  icon: Icon(Icons.more_horiz, size: 20, color: Colors.grey[500]),
+                  icon: Icon(Icons.more_horiz, size: 20, color: _mutedLabelColor),
                   onSelected: (value) {
                     if (value == 'delete') _deleteNote(note.id);
                     if (value == 'pin') {
@@ -675,7 +701,7 @@ class _NotesScreenState extends State<NotesScreen> {
               DateFormat('dd MMM yyyy - HH:mm').format(note.date),
               style: GoogleFonts.inter(
                 fontSize: 11,
-                color: Colors.grey[400],
+                color: _dateColor,
               ),
             ),
           ],
@@ -809,13 +835,15 @@ class _NotesScreenState extends State<NotesScreen> {
               height: 66,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: (widget.isDarkMode ? Colors.black : Colors.white).withValues(alpha: 0.68),
+                color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: widget.isDarkMode ? 0.14 : 0.72),
+                  color: widget.isDarkMode
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : Colors.black.withValues(alpha: 0.06),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _notesBlue.withValues(alpha: 0.14),
+                    color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.16 : 0.14),
                     blurRadius: 24,
                     offset: const Offset(0, 10),
                   ),
