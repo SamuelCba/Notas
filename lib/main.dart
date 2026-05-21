@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -324,10 +322,6 @@ class _NotesScreenState extends State<NotesScreen> {
 
   Color get _cardColor {
     return widget.isDarkMode ? const Color(0xFF161B22) : Colors.white;
-  }
-
-  Color get _floatingPanelColor {
-    return widget.isDarkMode ? const Color(0xFF171E27) : Colors.white;
   }
 
   Color get _primaryTextColor {
