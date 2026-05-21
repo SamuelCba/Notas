@@ -812,13 +812,13 @@ class _NotesScreenState extends State<NotesScreen> {
                   color: selected ? _notesBlue : _notesBlue.withValues(alpha: 0.72),
                   size: selected ? 26 : 24,
                 ),
-                child: selected ? tab.activeIcon : tab.icon,
+                child: selected ? tab.activeIcon! : tab.icon!,
               ),
             ),
             if (!compact) ...[
               const SizedBox(width: 6),
               Text(
-                tab.label,
+                tab.label!,
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -955,12 +955,12 @@ class _NotesScreenState extends State<NotesScreen> {
                     scale: 0.92 + navProgress * 0.08,
                     child: IconTheme(
                       data: const IconThemeData(color: _notesBlue, size: 24),
-                      child: tab.activeIcon,
+                      child: tab.activeIcon!,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    tab.label,
+                    tab.label!,
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
