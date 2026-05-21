@@ -812,7 +812,7 @@ class _NotesScreenState extends State<NotesScreen> {
                   color: selected ? _notesBlue : _notesBlue.withValues(alpha: 0.72),
                   size: selected ? 26 : 24,
                 ),
-                child: selected ? tab.activeIcon! : tab.icon!,
+                child: selected ? tab.activeIcon! : tab.icon,
               ),
             ),
             if (!compact) ...[
