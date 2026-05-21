@@ -174,7 +174,7 @@ class _NotesScreenState extends State<NotesScreen> {
           activeIcon: Icon(CupertinoIcons.doc_text),
         ),
         GlassBottomBarTab(
-          label: 'Editar',
+          label: 'Ai',
           icon: Icon(CupertinoIcons.sparkles),
           activeIcon: Icon(CupertinoIcons.sparkles),
         ),
@@ -371,11 +371,6 @@ class _NotesScreenState extends State<NotesScreen> {
     final visibleNotes = _visibleNotes();
     final pinnedNotes = visibleNotes.where((n) => n.isPinned).toList();
     final unpinnedNotes = visibleNotes.where((n) => !n.isPinned).toList();
-    final collapse = (_scrollOffset / 72).clamp(0.0, 1.0);
-    final navProgress = Curves.easeOutCubic.transform(collapse);
-    final fullBarOpacity = (1 - navProgress * 1.25).clamp(0.0, 1.0);
-    final fullBarScale = 1 - navProgress * 0.16;
-    final miniBarOpacity = (navProgress * 1.25).clamp(0.0, 1.0);
     final topInset = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
@@ -493,31 +488,74 @@ class _NotesScreenState extends State<NotesScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 30,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                IgnorePointer(
-                  ignoring: fullBarOpacity < 0.06,
-                  child: Opacity(
-                    opacity: fullBarOpacity,
-                    child: Transform.scale(
-                      scale: fullBarScale,
-                      child: _buildFullBottomBar(navProgress),
+            bottom: 22,
+            child: GlassSearchableBottomBar(
+              isSearchActive: _isMiniMode || _isSearching,
+              selectedIndex: _currentIndex,
+              onTabSelected: (index) {
+                if (index == _currentIndex && _isMiniMode) {
+                  _dismissMiniMode();
+                  return;
+                }
+                setState(() {
+                  _currentIndex = index;
+                  _isSearching = false;
+                });
+              },
+              extraButton: GlassBottomBarExtraButton(
+                icon: const Icon(CupertinoIcons.square_pencil),
+                onTap: _addNote,
+                label: 'Nueva nota',
+                iconColor: _notesBlue,
+                size: 58,
+              ),
+              barHeight: _barHeight,
+              searchBarHeight: 50.0,
+              horizontalPadding: _barPaddingH,
+              verticalPadding: _barPaddingV,
+              spacing: _barSpacing,
+              selectedIconColor: _notesBlue,
+              unselectedIconColor: _notesBlue.withValues(alpha: 0.72),
+              indicatorColor: _notesBlue.withValues(alpha: 0.18),
+              labelFontSize: 10,
+              iconSize: 27,
+              iconLabelSpacing: 0,
+              quality: GlassQuality.premium,
+              interactionBehavior: GlassInteractionBehavior.full,
+              glassSettings: _barGlassSettings,
+              interactionGlowColor: _notesBlue,
+              searchConfig: GlassSearchBarConfig(
+                focusNode: _searchFocusNode,
+                autoFocusOnExpand: false,
+                showsCancelButton: true,
+                expandWhenActive: !_isMiniMode || _isSearching,
+                hintText: 'Buscar notas',
+                onSearchToggle: (active) {
+                  if (active) {
+                    setState(() => _isSearching = true);
+                  } else {
+                    setState(() {
+                      _isSearching = false;
+                      _searchFieldFocused = false;
+                    });
+                    if (_isMiniMode) _dismissMiniMode();
+                  }
+                },
+                onSearchFocusChanged: (focused) =>
+                    setState(() => _searchFieldFocused = focused),
+                searchIconColor: _notesBlue,
+                textInputAction: TextInputAction.search,
+                collapsedLogoBuilder: (context) {
+                  final tab = _tabs[_currentIndex];
+                  return Center(
+                    child: IconTheme(
+                      data: const IconThemeData(color: _notesBlue, size: 28),
+                      child: tab.activeIcon ?? tab.icon,
                     ),
-                  ),
-                ),
-                IgnorePointer(
-                  ignoring: miniBarOpacity < 0.08,
-                  child: Opacity(
-                    opacity: miniBarOpacity,
-                    child: Transform.scale(
-                      scale: 0.84 + navProgress * 0.16,
-                      child: _buildMiniBottomBar(navProgress),
-                    ),
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
+              tabs: _tabs,
             ),
           ),
         ],
@@ -824,104 +862,6 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-  IconData get _currentMiniIcon {
-    return switch (_currentIndex) {
-      1 => CupertinoIcons.sparkles,
-      2 => CupertinoIcons.checkmark_circle_fill,
-      3 => CupertinoIcons.person_crop_circle,
-      _ => CupertinoIcons.doc_text,
-    };
-  }
-
-  Widget _buildFullBottomBar(double navProgress) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GlassBottomBar(
-        key: const ValueKey('full-bottom-bar'),
-        tabs: _tabs,
-        selectedIndex: _currentIndex,
-        onTabSelected: (index) {
-          if (index == _currentIndex && _isMiniMode) {
-            _dismissMiniMode();
-            return;
-          }
-          setState(() {
-            _currentIndex = index;
-            _isSearching = false;
-          });
-        },
-        extraButton: GlassBottomBarExtraButton(
-          icon: const Icon(CupertinoIcons.square_pencil),
-          onTap: _addNote,
-          label: 'Nueva nota',
-          iconColor: _notesBlue,
-          size: 58,
-        ),
-        barHeight: _barHeight - navProgress * 8,
-        horizontalPadding: _barPaddingH,
-        verticalPadding: _barPaddingV,
-        spacing: _barSpacing,
-        selectedIconColor: _notesBlue,
-        unselectedIconColor: _notesBlue.withValues(alpha: 0.72),
-        indicatorColor: _notesBlue.withValues(alpha: 0.18),
-        labelFontSize: 10,
-        iconSize: 27,
-        iconLabelSpacing: 0,
-        quality: GlassQuality.premium,
-        interactionBehavior: GlassInteractionBehavior.full,
-        glassSettings: _barGlassSettings,
-        interactionGlowColor: _notesBlue,
-      ),
-    );
-  }
-
-  Widget _buildMiniBottomBar(double navProgress) {
-    return Center(
-      key: const ValueKey('mini-bottom-bar'),
-      child: GestureDetector(
-        onTap: _dismissMiniMode,
-        child: ClipOval(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutCubic,
-              width: 66,
-              height: 66,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
-                border: Border.all(
-                  color: widget.isDarkMode
-                      ? Colors.white.withValues(alpha: 0.10)
-                      : Colors.black.withValues(alpha: 0.06),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.16 : 0.14),
-                    blurRadius: 24,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: AnimatedScale(
-                  duration: const Duration(milliseconds: 240),
-                  curve: Curves.easeOutBack,
-                  scale: 0.92 + navProgress * 0.08,
-                  child: Icon(
-                    _currentMiniIcon,
-                    color: _notesBlue,
-                    size: 28,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class EditNoteScreen extends StatefulWidget {
