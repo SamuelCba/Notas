@@ -7,6 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 const _notesBlue = Color(0xFF147EFB);
+const _barHeight = 64.0;
+const _barPaddingH = 20.0;
+const _barPaddingV = 16.0;
+const _barSpacing = 8.0;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LiquidGlassWidgets.initialize();
@@ -205,6 +209,48 @@ class _NotesScreenState extends State<NotesScreen> {
         title: 'Ideas para la app',
         content: 'Agregar etiquetas\nSincronización en la nube\nModo oscuro',
         date: DateTime.now(),
+      ),
+      Note(
+        id: '4',
+        title: 'Recordatorio de llamadas',
+        content: 'Llamar al proveedor y confirmar horario.',
+        date: DateTime.now().subtract(const Duration(hours: 6)),
+      ),
+      Note(
+        id: '5',
+        title: 'Lista de compras',
+        content: 'Pan\nLeche\nCafé\nFruta\nAgua',
+        date: DateTime.now().subtract(const Duration(hours: 9)),
+      ),
+      Note(
+        id: '6',
+        title: 'Resumen de reunión',
+        content: 'Revisar entrega\nAjustar tiempos\nEnviar actualización',
+        date: DateTime.now().subtract(const Duration(days: 3)),
+      ),
+      Note(
+        id: '7',
+        title: 'Ideas para la IA',
+        content: 'Responder rápido\nSugerir acciones\nResumir notas largas',
+        date: DateTime.now().subtract(const Duration(days: 4)),
+      ),
+      Note(
+        id: '8',
+        title: 'Pendiente del proyecto',
+        content: 'Subir cambios al repo\nVerificar build\nDescargar APK',
+        date: DateTime.now().subtract(const Duration(days: 5)),
+      ),
+      Note(
+        id: '9',
+        title: 'Música para estudiar',
+        content: 'Lofi suave\nVolumen bajo\nSin letra',
+        date: DateTime.now().subtract(const Duration(days: 6)),
+      ),
+      Note(
+        id: '10',
+        title: 'Notas de prueba',
+        content: 'Scroll largo para ver la animación del navbar.',
+        date: DateTime.now().subtract(const Duration(days: 7)),
       ),
     ];
   }
@@ -778,161 +824,73 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-  Widget _buildNavTab(GlassBottomBarTab tab, int index, {required bool compact}) {
-    final selected = index == _currentIndex;
-    return GestureDetector(
-      onTap: () {
-        if (selected && _isMiniMode) {
-          _dismissMiniMode();
-          return;
-        }
-        setState(() {
-          _currentIndex = index;
-          _isSearching = false;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
-        padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? _notesBlue.withValues(alpha: widget.isDarkMode ? 0.20 : 0.16) : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedScale(
-              duration: const Duration(milliseconds: 240),
-              curve: Curves.easeOutBack,
-              scale: selected && compact ? 0.90 : selected ? 1.0 : 0.96,
-              child: IconTheme(
-                data: IconThemeData(
-                  color: selected ? _notesBlue : _notesBlue.withValues(alpha: 0.72),
-                  size: selected ? 26 : 24,
-                ),
-                child: selected ? tab.activeIcon! : tab.icon,
-              ),
-            ),
-            if (!compact) ...[
-              const SizedBox(width: 6),
-              Text(
-                tab.label!,
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: selected ? _notesBlue : _notesBlue.withValues(alpha: 0.72),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+  IconData get _currentMiniIcon {
+    return switch (_currentIndex) {
+      1 => CupertinoIcons.sparkles,
+      2 => CupertinoIcons.checkmark_circle_fill,
+      3 => CupertinoIcons.person_crop_circle,
+      _ => CupertinoIcons.doc_text,
+    };
   }
 
   Widget _buildFullBottomBar(double navProgress) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(34),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-            height: 64 - navProgress * 8,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
-              borderRadius: BorderRadius.circular(34 - navProgress * 4),
-              border: Border.all(
-                color: widget.isDarkMode
-                    ? Colors.white.withValues(alpha: 0.10)
-                    : Colors.black.withValues(alpha: 0.06),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.16 : 0.10),
-                  blurRadius: 24,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Row(
-                children: [
-                Expanded(child: _buildNavTab(_tabs[0], 0, compact: false)),
-                Expanded(child: _buildNavTab(_tabs[1], 1, compact: false)),
-                Expanded(child: _buildNavTab(_tabs[2], 2, compact: false)),
-                Expanded(child: _buildNavTab(_tabs[3], 3, compact: false)),
-                PopupMenuButton<String>(
-                  onSelected: _handleQuickAction,
-                  color: _floatingPanelColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  offset: const Offset(0, 14),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'new_note',
-                      child: Text(
-                        'Nueva nota',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'theme',
-                      child: Text(
-                        widget.isDarkMode ? 'Modo claro' : 'Modo oscuro',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'profile',
-                      child: Text(
-                        'Perfil',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
-                      ),
-                    ),
-                  ],
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 6, left: 4),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.20 : 0.14),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(CupertinoIcons.ellipsis, size: 18, color: _notesBlue),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+      child: GlassBottomBar(
+        key: const ValueKey('full-bottom-bar'),
+        tabs: _tabs,
+        selectedIndex: _currentIndex,
+        onTabSelected: (index) {
+          if (index == _currentIndex && _isMiniMode) {
+            _dismissMiniMode();
+            return;
+          }
+          setState(() {
+            _currentIndex = index;
+            _isSearching = false;
+          });
+        },
+        extraButton: GlassBottomBarExtraButton(
+          icon: const Icon(CupertinoIcons.square_pencil),
+          onTap: _addNote,
+          label: 'Nueva nota',
+          iconColor: _notesBlue,
+          size: 58,
         ),
+        barHeight: _barHeight - navProgress * 8,
+        horizontalPadding: _barPaddingH,
+        verticalPadding: _barPaddingV,
+        spacing: _barSpacing,
+        selectedIconColor: _notesBlue,
+        unselectedIconColor: _notesBlue.withValues(alpha: 0.72),
+        indicatorColor: _notesBlue.withValues(alpha: 0.18),
+        labelFontSize: 10,
+        iconSize: 27,
+        iconLabelSpacing: 0,
+        quality: GlassQuality.premium,
+        interactionBehavior: GlassInteractionBehavior.full,
+        glassSettings: _barGlassSettings,
+        interactionGlowColor: _notesBlue,
       ),
     );
   }
 
   Widget _buildMiniBottomBar(double navProgress) {
-    final tab = _tabs[_currentIndex];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
+    return Center(
+      key: const ValueKey('mini-bottom-bar'),
+      child: GestureDetector(
+        onTap: _dismissMiniMode,
+        child: ClipOval(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
-              height: 54,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              width: 66,
+              height: 66,
               decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
-                borderRadius: BorderRadius.circular(28),
                 border: Border.all(
                   color: widget.isDarkMode
                       ? Colors.white.withValues(alpha: 0.10)
@@ -940,34 +898,23 @@ class _NotesScreenState extends State<NotesScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.16 : 0.12),
+                    color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.16 : 0.14),
                     blurRadius: 24,
                     offset: const Offset(0, 10),
                   ),
                 ],
               ),
-                  child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedScale(
-                    duration: const Duration(milliseconds: 240),
-                    curve: Curves.easeOutBack,
-                    scale: 0.92 + navProgress * 0.08,
-                    child: IconTheme(
-                      data: const IconThemeData(color: _notesBlue, size: 24),
-                      child: tab.activeIcon!,
-                    ),
+              child: Center(
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutBack,
+                  scale: 0.92 + navProgress * 0.08,
+                  child: Icon(
+                    _currentMiniIcon,
+                    color: _notesBlue,
+                    size: 28,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    tab.label!,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: _notesBlue,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
