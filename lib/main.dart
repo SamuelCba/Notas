@@ -97,6 +97,7 @@ class _NotesScreenState extends State<NotesScreen> {
   int _currentIndex = 0;
   bool _isMiniMode = false;
   bool _isSearching = false;
+  bool _searchFieldFocused = false;
   String _searchQuery = '';
   double _scrollOffset = 0;
 
