@@ -18,13 +18,21 @@ void main() async {
   runApp(LiquidGlassWidgets.wrap(const NotesApp()));
 }
 
-class NotesApp extends StatelessWidget {
+class NotesApp extends StatefulWidget {
   const NotesApp({super.key});
+
+  @override
+  State<NotesApp> createState() => _NotesAppState();
+}
+
+class _NotesAppState extends State<NotesApp> {
+  ThemeMode _themeMode = ThemeMode.light;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Notas',
+      themeMode: _themeMode,
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: GoogleFonts.inter().fontFamily,
@@ -33,8 +41,21 @@ class NotesApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
       ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        fontFamily: GoogleFonts.inter().fontFamily,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+      ),
       debugShowCheckedModeBanner: false,
-      home: const NotesScreen(),
+      home: NotesScreen(
+        isDarkMode: _themeMode == ThemeMode.dark,
+        onThemeChanged: (isDark) {
+          setState(() => _themeMode = isDark ? ThemeMode.dark : ThemeMode.light);
+        },
+      ),
     );
   }
 }
@@ -56,7 +77,14 @@ class Note {
 }
 
 class NotesScreen extends StatefulWidget {
-  const NotesScreen({super.key});
+  final bool isDarkMode;
+  final ValueChanged<bool> onThemeChanged;
+
+  const NotesScreen({
+    super.key,
+    required this.isDarkMode,
+    required this.onThemeChanged,
+  });
 
   @override
   State<NotesScreen> createState() => _NotesScreenState();
@@ -226,7 +254,10 @@ class _NotesScreenState extends State<NotesScreen> {
       reverseTransitionDuration: const Duration(milliseconds: 320),
       opaque: true,
       barrierColor: Colors.white,
-      pageBuilder: (context, animation, secondaryAnimation) => EditNoteScreen(note: note),
+      pageBuilder: (context, animation, secondaryAnimation) => EditNoteScreen(
+        note: note,
+        isDarkMode: widget.isDarkMode,
+      ),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
           parent: animation,
@@ -234,7 +265,7 @@ class _NotesScreenState extends State<NotesScreen> {
           reverseCurve: Curves.easeInCubic,
         );
         return ColoredBox(
-          color: Colors.grey.shade50,
+          color: widget.isDarkMode ? const Color(0xFF0D1117) : Colors.grey.shade50,
           child: ScaleTransition(
             scale: curved.drive(Tween(begin: fromPlusButton ? 0.72 : 0.88, end: 1.0)),
             alignment: fromPlusButton ? Alignment.bottomRight : Alignment.center,
@@ -266,6 +297,45 @@ class _NotesScreenState extends State<NotesScreen> {
     }).toList();
   }
 
+  String get _currentTitle {
+    return switch (_currentIndex) {
+      1 => 'Editar',
+      2 => 'Tareas',
+      3 => 'Perfil',
+      _ => 'Notas',
+    };
+  }
+
+  String get _currentSubtitle {
+    if (_currentIndex == 3) return 'Ajustes de la app';
+    return '${notes.length} notas';
+  }
+
+  IconData get _currentIcon {
+    return switch (_currentIndex) {
+      1 => CupertinoIcons.square_pencil,
+      2 => CupertinoIcons.checkmark_circle_fill,
+      3 => CupertinoIcons.person_crop_circle,
+      _ => CupertinoIcons.doc_text,
+    };
+  }
+
+  Color get _backgroundColor {
+    return widget.isDarkMode ? const Color(0xFF0D1117) : Colors.grey.shade50;
+  }
+
+  Color get _cardColor {
+    return widget.isDarkMode ? const Color(0xFF161B22) : Colors.white;
+  }
+
+  Color get _primaryTextColor {
+    return widget.isDarkMode ? const Color(0xFFF5F7FA) : Colors.black;
+  }
+
+  Color get _secondaryTextColor {
+    return widget.isDarkMode ? const Color(0xFF9AA4B2) : Colors.grey.shade600;
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibleNotes = _visibleNotes();
@@ -277,7 +347,7 @@ class _NotesScreenState extends State<NotesScreen> {
     final topInset = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: _backgroundColor,
       resizeToAvoidBottomInset: false,
       extendBody: true,
       body: Stack(
@@ -299,18 +369,19 @@ class _NotesScreenState extends State<NotesScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Notas',
+                            _currentTitle,
                             style: GoogleFonts.inter(
                               fontSize: 34,
                               fontWeight: FontWeight.w800,
+                              color: _primaryTextColor,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${notes.length} notas',
+                            _currentSubtitle,
                             style: GoogleFonts.inter(
                               fontSize: 14,
-                              color: Colors.grey[600],
+                              color: _secondaryTextColor,
                             ),
                           ),
                         ],
@@ -325,10 +396,15 @@ class _NotesScreenState extends State<NotesScreen> {
                       filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.68),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
+	                        decoration: BoxDecoration(
+	                          color: (widget.isDarkMode ? Colors.black : Colors.white)
+	                              .withValues(alpha: 0.68),
+	                          borderRadius: BorderRadius.circular(24),
+	                          border: Border.all(
+	                            color: Colors.white.withValues(
+	                              alpha: widget.isDarkMode ? 0.14 : 0.72,
+	                            ),
+	                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.blue.withValues(alpha: 0.08),
@@ -361,7 +437,9 @@ class _NotesScreenState extends State<NotesScreen> {
               child: ListView(
                 controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
-                children: [
+                children: _currentIndex == 3
+                    ? [_buildProfilePanel()]
+                    : [
                   if (pinnedNotes.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -464,9 +542,9 @@ class _NotesScreenState extends State<NotesScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.white.withValues(alpha: 0.78 * smallTitleOpacity),
-                          Colors.white.withValues(alpha: 0.36 * smallTitleOpacity),
-                          Colors.white.withValues(alpha: 0),
+	                          _backgroundColor.withValues(alpha: 0.78 * smallTitleOpacity),
+	                          _backgroundColor.withValues(alpha: 0.36 * smallTitleOpacity),
+	                          _backgroundColor.withValues(alpha: 0),
                         ],
                       ),
                     ),
@@ -475,13 +553,13 @@ class _NotesScreenState extends State<NotesScreen> {
                       duration: const Duration(milliseconds: 140),
                       opacity: smallTitleOpacity,
                       child: Text(
-                        'Notas',
-                        style: GoogleFonts.inter(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black.withValues(alpha: 0.84),
-                        ),
-                      ),
+	                        _currentTitle,
+	                        style: GoogleFonts.inter(
+	                          fontSize: 17,
+	                          fontWeight: FontWeight.w800,
+	                          color: _primaryTextColor.withValues(alpha: 0.84),
+	                        ),
+	                      ),
                     ),
                   ),
                 ),
@@ -492,37 +570,20 @@ class _NotesScreenState extends State<NotesScreen> {
             left: 0,
             right: 0,
             bottom: 30,
-            child: GlassBottomBar(
-              tabs: _tabs,
-              selectedIndex: _currentIndex,
-              onTabSelected: (index) {
-                if (index == _currentIndex && _isMiniMode) {
-                  _dismissMiniMode();
-                  return;
-                }
-                setState(() => _currentIndex = index);
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: animation.drive(Tween(begin: 0.92, end: 1.0)),
+                    child: child,
+                  ),
+                );
               },
-              extraButton: GlassBottomBarExtraButton(
-                icon: const Icon(CupertinoIcons.add_circled_solid),
-                onTap: _addNote,
-                label: 'Nueva nota',
-                iconColor: _notesBlue,
-                size: 58,
-              ),
-              barHeight: _barHeight,
-              horizontalPadding: _barPaddingH,
-              verticalPadding: _barPaddingV,
-              spacing: _barSpacing,
-              selectedIconColor: _notesBlue,
-              unselectedIconColor: _notesBlue.withValues(alpha: 0.72),
-              indicatorColor: _notesBlue.withValues(alpha: 0.18),
-              labelFontSize: 10,
-              iconSize: 27,
-              iconLabelSpacing: 0,
-              quality: GlassQuality.premium,
-              interactionBehavior: GlassInteractionBehavior.full,
-              glassSettings: _barGlassSettings,
-              interactionGlowColor: _notesBlue,
+              child: _isMiniMode ? _buildMiniBottomBar() : _buildFullBottomBar(),
             ),
           ),
         ],
@@ -537,11 +598,11 @@ class _NotesScreenState extends State<NotesScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.22 : 0.03),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -555,10 +616,11 @@ class _NotesScreenState extends State<NotesScreen> {
                 Expanded(
                   child: Text(
                     note.title,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+	                    style: GoogleFonts.inter(
+	                      fontSize: 16,
+	                      fontWeight: FontWeight.w600,
+	                      color: _primaryTextColor,
+	                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -589,11 +651,11 @@ class _NotesScreenState extends State<NotesScreen> {
             const SizedBox(height: 8),
             Text(
               note.content.isEmpty ? 'Sin contenido' : note.content,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: Colors.grey[600],
-                height: 1.4,
-              ),
+	              style: GoogleFonts.inter(
+	                fontSize: 14,
+	                color: _secondaryTextColor,
+	                height: 1.4,
+	              ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
@@ -609,13 +671,181 @@ class _NotesScreenState extends State<NotesScreen> {
         ),
       ),
     );
+	  }
+
+  Widget _buildProfilePanel() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: widget.isDarkMode
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.04),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.20 : 0.04),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.22 : 0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                widget.isDarkMode ? CupertinoIcons.moon_stars_fill : CupertinoIcons.sun_max_fill,
+                color: _notesBlue,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Modo oscuro',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: _primaryTextColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.isDarkMode ? 'Tema oscuro activado' : 'Tema claro activado',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: _secondaryTextColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            CupertinoSwitch(
+              value: widget.isDarkMode,
+              activeTrackColor: _notesBlue,
+              onChanged: widget.onThemeChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullBottomBar() {
+    return GlassBottomBar(
+      key: const ValueKey('full-bottom-bar'),
+      tabs: _tabs,
+      selectedIndex: _currentIndex,
+      onTabSelected: (index) {
+        if (index == _currentIndex && _isMiniMode) {
+          _dismissMiniMode();
+          return;
+        }
+        setState(() {
+          _currentIndex = index;
+          _isSearching = false;
+        });
+      },
+      extraButton: GlassBottomBarExtraButton(
+        icon: const Icon(CupertinoIcons.add_circled_solid),
+        onTap: _addNote,
+        label: 'Nueva nota',
+        iconColor: _notesBlue,
+        size: 58,
+      ),
+      barHeight: _barHeight,
+      horizontalPadding: _barPaddingH,
+      verticalPadding: _barPaddingV,
+      spacing: _barSpacing,
+      selectedIconColor: _notesBlue,
+      unselectedIconColor: _notesBlue.withValues(alpha: 0.72),
+      indicatorColor: _notesBlue.withValues(alpha: 0.18),
+      labelFontSize: 10,
+      iconSize: 27,
+      iconLabelSpacing: 0,
+      quality: GlassQuality.premium,
+      interactionBehavior: GlassInteractionBehavior.full,
+      glassSettings: _barGlassSettings,
+      interactionGlowColor: _notesBlue,
+    );
+  }
+
+  Widget _buildMiniBottomBar() {
+    return Center(
+      key: const ValueKey('mini-bottom-bar'),
+      child: GestureDetector(
+        onTap: _dismissMiniMode,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              height: 58,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              decoration: BoxDecoration(
+                color: (widget.isDarkMode ? Colors.black : Colors.white).withValues(alpha: 0.64),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: widget.isDarkMode ? 0.14 : 0.72),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _notesBlue.withValues(alpha: 0.12),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconTheme(
+                    data: const IconThemeData(color: _notesBlue, size: 27),
+                    child: Icon(_currentIcon),
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    _currentTitle,
+                    style: GoogleFonts.inter(
+                      color: _notesBlue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
 class EditNoteScreen extends StatefulWidget {
   final Note note;
+  final bool isDarkMode;
 
-  const EditNoteScreen({super.key, required this.note});
+  const EditNoteScreen({
+    super.key,
+    required this.note,
+    required this.isDarkMode,
+  });
 
   @override
   State<EditNoteScreen> createState() => _EditNoteScreenState();
@@ -669,19 +899,24 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final backgroundColor = widget.isDarkMode ? const Color(0xFF0D1117) : Colors.grey.shade50;
+    final cardColor = widget.isDarkMode ? const Color(0xFF161B22) : Colors.white;
+    final primaryTextColor = widget.isDarkMode ? const Color(0xFFF5F7FA) : Colors.black;
+    final secondaryTextColor = widget.isDarkMode ? const Color(0xFF9AA4B2) : Colors.grey.shade600;
+
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: primaryTextColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Editar Nota',
           style: GoogleFonts.inter(
-            color: Colors.black,
+            color: primaryTextColor,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -714,24 +949,31 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
           children: [
             TextField(
               controller: titleController,
-              style: GoogleFonts.inter(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: const InputDecoration(
-                hintText: 'Título',
-                border: InputBorder.none,
-              ),
-            ),
+	              style: GoogleFonts.inter(
+	                fontSize: 24,
+	                fontWeight: FontWeight.w600,
+	                color: primaryTextColor,
+	              ),
+	              decoration: InputDecoration(
+	                hintText: 'Título',
+	                hintStyle: TextStyle(color: secondaryTextColor),
+	                border: InputBorder.none,
+	              ),
+	            ),
             const SizedBox(height: 16),
             Expanded(
               child: TextField(
                 controller: contentController,
-                style: GoogleFonts.inter(fontSize: 16, height: 1.5),
-                decoration: const InputDecoration(
-                  hintText: 'Escribe tu nota...',
-                  border: InputBorder.none,
-                ),
+	                style: GoogleFonts.inter(
+	                  fontSize: 16,
+	                  height: 1.5,
+	                  color: primaryTextColor,
+	                ),
+	                decoration: InputDecoration(
+	                  hintText: 'Escribe tu nota...',
+	                  hintStyle: TextStyle(color: secondaryTextColor),
+	                  border: InputBorder.none,
+	                ),
                 maxLines: null,
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,
@@ -739,37 +981,37 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
             ),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-              ),
+	            decoration: BoxDecoration(
+	                color: cardColor,
+	                borderRadius: BorderRadius.circular(15),
+	              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   IconButton(
                     tooltip: 'Negrita',
                     onPressed: () => _wrapSelection('**', '**'),
-                    icon: Icon(Icons.format_bold, color: Colors.grey[600]),
+	                    icon: Icon(Icons.format_bold, color: secondaryTextColor),
                   ),
                   IconButton(
                     tooltip: 'Cursiva',
                     onPressed: () => _wrapSelection('_', '_'),
-                    icon: Icon(Icons.format_italic, color: Colors.grey[600]),
+	                    icon: Icon(Icons.format_italic, color: secondaryTextColor),
                   ),
                   IconButton(
                     tooltip: 'Lista',
                     onPressed: () => _insertAtCursor('\n• '),
-                    icon: Icon(Icons.format_list_bulleted, color: Colors.grey[600]),
+	                    icon: Icon(Icons.format_list_bulleted, color: secondaryTextColor),
                   ),
                   IconButton(
                     tooltip: 'Tarea',
                     onPressed: () => _insertAtCursor('\n☐ '),
-                    icon: Icon(Icons.check_box_outlined, color: Colors.grey[600]),
+	                    icon: Icon(Icons.check_box_outlined, color: secondaryTextColor),
                   ),
                   IconButton(
                     tooltip: 'Imagen',
                     onPressed: () => _insertAtCursor('\n[imagen] '),
-                    icon: Icon(Icons.image_outlined, color: Colors.grey[600]),
+	                    icon: Icon(Icons.image_outlined, color: secondaryTextColor),
                   ),
                 ],
               ),
