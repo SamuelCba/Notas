@@ -89,13 +89,9 @@ class NotesScreen extends StatefulWidget {
 
 class _NotesScreenState extends State<NotesScreen> {
   final ScrollController _scrollController = ScrollController();
-  final FocusNode _searchFocusNode = FocusNode();
-  final TextEditingController _searchController = TextEditingController();
   List<Note> notes = [];
   int _currentIndex = 0;
   bool _isMiniMode = false;
-  bool _isSearching = false;
-  String _searchQuery = '';
   double _scrollOffset = 0;
 
   @override
@@ -110,8 +106,6 @@ class _NotesScreenState extends State<NotesScreen> {
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
-    _searchController.dispose();
-    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -128,7 +122,6 @@ class _NotesScreenState extends State<NotesScreen> {
   void _dismissMiniMode() {
     setState(() {
       _isMiniMode = false;
-      _isSearching = false;
     });
   }
 
@@ -308,12 +301,7 @@ class _NotesScreenState extends State<NotesScreen> {
             text.contains('enviar');
       });
     }
-    final query = _searchQuery.trim().toLowerCase();
-    if (query.isEmpty) return source.toList();
-    return source.where((note) {
-      return note.title.toLowerCase().contains(query) ||
-          note.content.toLowerCase().contains(query);
-    }).toList();
+    return source.toList();
   }
 
   Color get _backgroundColor {
@@ -339,6 +327,30 @@ class _NotesScreenState extends State<NotesScreen> {
   Color get _dateColor {
     return widget.isDarkMode ? const Color(0xFF7E8AA0) : Colors.grey.shade400;
   }
+
+  LiquidGlassSettings get _triggerGlassSettings => LiquidGlassSettings(
+        glassColor: widget.isDarkMode ? const Color(0xAA1C1C1E) : const Color(0x78FFFFFF),
+        thickness: 18,
+        blur: 3,
+        lightIntensity: 0.4,
+        ambientStrength: 0.08,
+        chromaticAberration: 0.01,
+        refractiveIndex: 1.2,
+        saturation: 1.15,
+        specularSharpness: GlassSpecularSharpness.medium,
+      );
+
+  LiquidGlassSettings get _menuGlassSettings => LiquidGlassSettings(
+        glassColor: widget.isDarkMode ? const Color(0xCC1C1C1E) : const Color(0xB8FFFFFF),
+        thickness: 18,
+        blur: 6,
+        lightIntensity: 0.6,
+        ambientStrength: 0.1,
+        chromaticAberration: 0.01,
+        refractiveIndex: 1.2,
+        saturation: 1.15,
+        specularSharpness: GlassSpecularSharpness.medium,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -391,7 +403,7 @@ class _NotesScreenState extends State<NotesScreen> {
                           padding: const EdgeInsets.only(top: 70),
                           child: Center(
                             child: Text(
-                              _searchQuery.trim().isEmpty ? 'Sin tareas' : 'Sin resultados',
+                              'Sin notas',
                               style: GoogleFonts.inter(
                                 fontSize: 15,
                                 color: _mutedLabelColor,
@@ -408,65 +420,40 @@ class _NotesScreenState extends State<NotesScreen> {
             left: 16,
             right: 16,
             child: SizedBox(
-              height: 44,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              height: 56,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  _buildEditPill(),
-                  Expanded(
-                    child: Center(
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 180),
-                        opacity: (_scrollOffset / 72).clamp(0.0, 1.0),
-                        child: Text(
-                          'Notas',
-                          style: GoogleFonts.inter(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: _primaryTextColor,
-                          ),
-                        ),
+                  Center(
+                    child: Text(
+                      'Notas',
+                      style: GoogleFonts.inter(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: _primaryTextColor,
                       ),
                     ),
                   ),
-                  _buildTopMoreMenuButton(),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        AnimatedScale(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          scale: 1 - (_scrollOffset / 220).clamp(0.0, 0.16),
+                          child: _buildFloatingComposeButton(),
+                        ),
+                        const SizedBox(width: 5),
+                        _buildSearchIconButton(),
+                        const SizedBox(width: 5),
+                        _buildTopMoreMenuButton(),
+                      ],
+                    ),
+                  ),
                 ],
-              ),
-            ),
-          ),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 360),
-            curve: Curves.easeOutCubic,
-            left: 18,
-            right: 18,
-            top: _isSearching ? topInset + 58 : topInset - 90,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 220),
-              opacity: _isSearching ? 1 : 0,
-              child: IgnorePointer(
-                ignoring: !_isSearching,
-                child: GlassSearchBar(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  placeholder: 'Buscar notas',
-                  showsCancelButton: true,
-                  useOwnLayer: true,
-                  height: 50,
-                  searchIconColor: _notesBlue,
-                  clearIconColor: _notesBlue,
-                  cancelButtonColor: _notesBlue,
-                  settings: _barGlassSettings,
-                  quality: GlassQuality.premium,
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                  onCancel: () {
-                    setState(() {
-                      _isSearching = false;
-                      _searchQuery = '';
-                      _searchController.clear();
-                    });
-                    _searchFocusNode.unfocus();
-                  },
-                ),
               ),
             ),
           ),
@@ -475,25 +462,15 @@ class _NotesScreenState extends State<NotesScreen> {
             right: 0,
             bottom: 22,
             child: GlassSearchableBottomBar(
-              isSearchActive: _isMiniMode || _isSearching,
+              isSearchActive: _isMiniMode,
               selectedIndex: _currentIndex,
               onTabSelected: (index) {
                 if (index == _currentIndex && _isMiniMode) {
                   _dismissMiniMode();
                   return;
                 }
-                setState(() {
-                  _currentIndex = index;
-                  _isSearching = false;
-                });
+                setState(() => _currentIndex = index);
               },
-              extraButton: GlassBottomBarExtraButton(
-                icon: const Icon(CupertinoIcons.square_pencil),
-                onTap: _addNote,
-                label: 'Nueva nota',
-                iconColor: _notesBlue,
-                size: 58,
-              ),
               barHeight: _barHeight,
               searchBarHeight: 50.0,
               horizontalPadding: _barPaddingH,
@@ -509,34 +486,6 @@ class _NotesScreenState extends State<NotesScreen> {
               interactionBehavior: GlassInteractionBehavior.full,
               glassSettings: _barGlassSettings,
               interactionGlowColor: _notesBlue,
-              searchConfig: GlassSearchBarConfig(
-                focusNode: _searchFocusNode,
-                autoFocusOnExpand: false,
-                showsCancelButton: true,
-                expandWhenActive: !_isMiniMode || _isSearching,
-                hintText: 'Buscar notas',
-                onSearchToggle: (active) {
-                  if (active) {
-                    setState(() => _isSearching = true);
-                  } else {
-                    setState(() {
-                      _isSearching = false;
-                    });
-                    if (_isMiniMode) _dismissMiniMode();
-                  }
-                },
-                searchIconColor: _notesBlue,
-                textInputAction: TextInputAction.search,
-                collapsedLogoBuilder: (context) {
-                  final tab = _tabs[_currentIndex];
-                  return Center(
-                    child: IconTheme(
-                      data: const IconThemeData(color: _notesBlue, size: 28),
-                      child: tab.activeIcon ?? tab.icon,
-                    ),
-                  );
-                },
-              ),
               tabs: _tabs,
             ),
           ),
@@ -701,31 +650,34 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-  Widget _buildEditPill() {
-    return GlassButton.custom(
-      onTap: () {
-        setState(() {
-          _currentIndex = 1;
-          _isSearching = false;
-        });
-      },
-      width: 74,
+  Widget _buildFloatingComposeButton() {
+    return GlassButton(
+      onTap: _addNote,
+      width: 44,
       height: 44,
-      shape: const LiquidRoundedSuperellipse(borderRadius: 22),
-      settings: _barGlassSettings,
+      shape: const LiquidOval(),
+      settings: _triggerGlassSettings,
       quality: GlassQuality.premium,
       useOwnLayer: true,
-      stretch: 0.15,
-      child: const Center(
-        child: Text(
-          'Editar',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w400,
-            letterSpacing: -0.1,
-          ),
-        ),
+      stretch: 0.18,
+      icon: const Icon(CupertinoIcons.square_pencil, color: Colors.white, size: 22),
+    );
+  }
+
+  Widget _buildSearchIconButton() {
+    return GlassButton(
+      onTap: () {},
+      width: 44,
+      height: 44,
+      shape: const LiquidOval(),
+      settings: _triggerGlassSettings,
+      quality: GlassQuality.premium,
+      useOwnLayer: true,
+      stretch: 0.18,
+      icon: Icon(
+        CupertinoIcons.search,
+        color: widget.isDarkMode ? Colors.white : _notesBlue,
+        size: 22,
       ),
     );
   }
@@ -733,7 +685,7 @@ class _NotesScreenState extends State<NotesScreen> {
   Widget _buildTopMoreMenuButton() {
     return GlassMenu(
       menuWidth: 240,
-      glassSettings: _barGlassSettings,
+      glassSettings: _menuGlassSettings,
       menuBorderRadius: 16,
       quality: GlassQuality.premium,
       triggerBuilder: (context, toggleMenu) => GlassButton(
@@ -741,7 +693,7 @@ class _NotesScreenState extends State<NotesScreen> {
         width: 44,
         height: 44,
         shape: const LiquidOval(),
-        settings: _barGlassSettings,
+        settings: _triggerGlassSettings,
         quality: GlassQuality.premium,
         useOwnLayer: true,
         stretch: 0.2,
