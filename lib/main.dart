@@ -128,29 +128,9 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   void _dismissMiniMode() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOutQuart,
-      );
-    }
     setState(() {
       _isMiniMode = false;
       _isSearching = false;
-    });
-  }
-
-  void _toggleSearch() {
-    setState(() => _isSearching = !_isSearching);
-    if (!_isSearching) {
-      _searchController.clear();
-      _searchQuery = '';
-      _searchFocusNode.unfocus();
-      return;
-    }
-    Future<void>.delayed(const Duration(milliseconds: 180), () {
-      if (mounted) _searchFocusNode.requestFocus();
     });
   }
 
@@ -432,21 +412,32 @@ class _NotesScreenState extends State<NotesScreen> {
           Positioned(
             top: topInset + 10,
             left: 16,
-            child: _buildFloatingTitlePill(),
-          ),
-          Positioned(
-            top: topInset + 10,
             right: 16,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildFloatingIconButton(
-                  icon: _isSearching ? CupertinoIcons.xmark : CupertinoIcons.search,
-                  onTap: _toggleSearch,
-                ),
-                const SizedBox(width: 8),
-                _buildTopMoreMenuButton(),
-              ],
+            child: SizedBox(
+              height: 44,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildEditPill(),
+                  Expanded(
+                    child: Center(
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 180),
+                        opacity: (_scrollOffset / 72).clamp(0.0, 1.0),
+                        child: Text(
+                          'Notas',
+                          style: GoogleFonts.inter(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: _primaryTextColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  _buildTopMoreMenuButton(),
+                ],
+              ),
             ),
           ),
           AnimatedPositioned(
@@ -716,85 +707,29 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-  void _handleQuickAction(String value) {
-    switch (value) {
-      case 'new_note':
-        _addNote();
-        break;
-      case 'theme':
-        widget.onThemeChanged(!widget.isDarkMode);
-        break;
-      case 'profile':
-        setState(() => _currentIndex = 3);
-        break;
-    }
-  }
-
-  Widget _buildFloatingTitlePill() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: widget.isDarkMode
-                  ? Colors.white.withValues(alpha: 0.10)
-                  : Colors.black.withValues(alpha: 0.06),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.14 : 0.08),
-                blurRadius: 22,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Text(
-            'Notas',
-            style: GoogleFonts.inter(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: _primaryTextColor,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingIconButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: widget.isDarkMode
-                    ? Colors.white.withValues(alpha: 0.10)
-                    : Colors.black.withValues(alpha: 0.06),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.14 : 0.08),
-                  blurRadius: 22,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Icon(icon, size: 20, color: _notesBlue),
+  Widget _buildEditPill() {
+    return GlassButton.custom(
+      onTap: () {
+        setState(() {
+          _currentIndex = 1;
+          _isSearching = false;
+        });
+      },
+      width: 74,
+      height: 44,
+      shape: const LiquidRoundedSuperellipse(borderRadius: 22),
+      settings: _barGlassSettings,
+      quality: GlassQuality.premium,
+      useOwnLayer: true,
+      stretch: 0.15,
+      child: const Center(
+        child: Text(
+          'Editar',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w400,
+            letterSpacing: -0.1,
           ),
         ),
       ),
@@ -802,60 +737,43 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   Widget _buildTopMoreMenuButton() {
-    return PopupMenuButton<String>(
-      onSelected: _handleQuickAction,
-      color: _floatingPanelColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      offset: const Offset(0, 14),
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: 'new_note',
-          child: Text(
-            'Nueva nota',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'theme',
-          child: Text(
-            widget.isDarkMode ? 'Modo claro' : 'Modo oscuro',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'profile',
-          child: Text(
-            'Perfil',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
-          ),
-        ),
-      ],
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: widget.isDarkMode
-                    ? Colors.white.withValues(alpha: 0.10)
-                    : Colors.black.withValues(alpha: 0.06),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.14 : 0.08),
-                  blurRadius: 22,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(CupertinoIcons.ellipsis, size: 20, color: _notesBlue),
-          ),
+    return GlassMenu(
+      menuWidth: 240,
+      glassSettings: _barGlassSettings,
+      menuBorderRadius: 16,
+      quality: GlassQuality.premium,
+      triggerBuilder: (context, toggleMenu) => GlassButton(
+        onTap: toggleMenu,
+        width: 44,
+        height: 44,
+        shape: const LiquidOval(),
+        settings: _barGlassSettings,
+        quality: GlassQuality.premium,
+        useOwnLayer: true,
+        stretch: 0.2,
+        icon: const Icon(
+          CupertinoIcons.line_horizontal_3_decrease,
+          color: Colors.white,
+          size: 24,
         ),
       ),
+      items: [
+        GlassMenuItem(
+          title: 'Nueva nota',
+          icon: const Icon(CupertinoIcons.square_pencil),
+          onTap: _addNote,
+        ),
+        GlassMenuItem(
+          title: widget.isDarkMode ? 'Modo claro' : 'Modo oscuro',
+          icon: Icon(widget.isDarkMode ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_stars_fill),
+          onTap: () => widget.onThemeChanged(!widget.isDarkMode),
+        ),
+        GlassMenuItem(
+          title: 'Perfil',
+          icon: const Icon(CupertinoIcons.person_crop_circle),
+          onTap: () => setState(() => _currentIndex = 3),
+        ),
+      ],
     );
   }
 
