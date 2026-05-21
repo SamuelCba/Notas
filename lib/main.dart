@@ -7,11 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 const _notesBlue = Color(0xFF147EFB);
-const _barHeight = 64.0;
-const _barPaddingH = 20.0;
-const _barPaddingV = 16.0;
-const _barSpacing = 8.0;
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LiquidGlassWidgets.initialize();
@@ -295,24 +290,6 @@ class _NotesScreenState extends State<NotesScreen> {
       return note.title.toLowerCase().contains(query) ||
           note.content.toLowerCase().contains(query);
     }).toList();
-  }
-
-  String get _currentTitle {
-    return switch (_currentIndex) {
-      1 => 'Editar',
-      2 => 'Tareas',
-      3 => 'Perfil',
-      _ => 'Notas',
-    };
-  }
-
-  IconData get _currentIcon {
-    return switch (_currentIndex) {
-      1 => CupertinoIcons.sparkles,
-      2 => CupertinoIcons.checkmark_circle_fill,
-      3 => CupertinoIcons.person_crop_circle,
-      _ => CupertinoIcons.doc_text,
-    };
   }
 
   Color get _backgroundColor {
@@ -835,13 +812,13 @@ class _NotesScreenState extends State<NotesScreen> {
                   color: selected ? _notesBlue : _notesBlue.withValues(alpha: 0.72),
                   size: selected ? 26 : 24,
                 ),
-                child: selected ? tab.activeIcon : tab.icon,
+                child: selected ? (tab.activeIcon ?? tab.icon ?? const SizedBox.shrink()) : (tab.icon ?? const SizedBox.shrink()),
               ),
             ),
             if (!compact) ...[
               const SizedBox(width: 6),
               Text(
-                tab.label,
+                tab.label ?? '',
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -884,7 +861,7 @@ class _NotesScreenState extends State<NotesScreen> {
               ],
             ),
             child: Row(
-              children: [
+                children: [
                 Expanded(child: _buildNavTab(_tabs[0], 0, compact: false)),
                 Expanded(child: _buildNavTab(_tabs[1], 1, compact: false)),
                 Expanded(child: _buildNavTab(_tabs[2], 2, compact: false)),
@@ -969,7 +946,7 @@ class _NotesScreenState extends State<NotesScreen> {
                   ),
                 ],
               ),
-              child: Row(
+                  child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   AnimatedScale(
@@ -978,12 +955,12 @@ class _NotesScreenState extends State<NotesScreen> {
                     scale: 0.92 + navProgress * 0.08,
                     child: IconTheme(
                       data: const IconThemeData(color: _notesBlue, size: 24),
-                      child: tab.activeIcon,
+                      child: tab.activeIcon ?? tab.icon ?? const SizedBox.shrink(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    tab.label,
+                    tab.label ?? '',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
