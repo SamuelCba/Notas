@@ -5,8 +5,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
-void main() => runApp(const NotesApp());
+const _notesBlue = Color(0xFF147EFB);
+const _barHeight = 64.0;
+const _barPaddingH = 20.0;
+const _barPaddingV = 16.0;
+const _barSpacing = 8.0;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LiquidGlassWidgets.initialize();
+  runApp(LiquidGlassWidgets.wrap(
+    const NotesApp(),
+    adaptiveQuality: true,
+  ));
+}
 
 class NotesApp extends StatelessWidget {
   const NotesApp({super.key});
@@ -53,14 +67,84 @@ class NotesScreen extends StatefulWidget {
 }
 
 class _NotesScreenState extends State<NotesScreen> {
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _searchFocusNode = FocusNode();
   List<Note> notes = [];
   int _currentIndex = 0;
+  bool _isMiniMode = false;
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _loadExampleNotes();
+    _scrollController.addListener(_onScroll);
   }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final mini = _scrollController.hasClients && _scrollController.offset > 50;
+    if (mini == _isMiniMode) return;
+    setState(() => _isMiniMode = mini);
+  }
+
+  void _dismissMiniMode() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutQuart,
+      );
+    }
+    setState(() {
+      _isMiniMode = false;
+      _isSearching = false;
+    });
+  }
+
+  LiquidGlassSettings get _barGlassSettings => const LiquidGlassSettings(
+        glassColor: Color(0xDDF8FAFF),
+        thickness: 30,
+        blur: 2,
+        chromaticAberration: .01,
+        lightAngle: GlassDefaults.lightAngle,
+        lightIntensity: .5,
+        ambientStrength: 0,
+        refractiveIndex: 1.2,
+        saturation: 1.18,
+        specularSharpness: GlassSpecularSharpness.medium,
+      );
+
+  List<GlassBottomBarTab> get _tabs => const [
+        GlassBottomBarTab(
+          label: 'Notas',
+          icon: Icon(CupertinoIcons.doc_text),
+          activeIcon: Icon(CupertinoIcons.doc_text),
+        ),
+        GlassBottomBarTab(
+          label: 'Editar',
+          icon: Icon(CupertinoIcons.square_pencil),
+          activeIcon: Icon(CupertinoIcons.square_pencil),
+        ),
+        GlassBottomBarTab(
+          label: 'Buscar',
+          icon: Icon(CupertinoIcons.search),
+          activeIcon: Icon(CupertinoIcons.search),
+        ),
+        GlassBottomBarTab(
+          label: 'Perfil',
+          icon: Icon(CupertinoIcons.person_crop_circle),
+          activeIcon: Icon(CupertinoIcons.person_crop_circle),
+        ),
+      ];
 
   void _loadExampleNotes() {
     notes = [
@@ -192,6 +276,7 @@ class _NotesScreenState extends State<NotesScreen> {
             // Lista de notas
             Expanded(
               child: ListView(
+                controller: _scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   if (pinnedNotes.isNotEmpty) ...[
@@ -232,15 +317,61 @@ class _NotesScreenState extends State<NotesScreen> {
         margin: const EdgeInsets.only(bottom: 20),
         child: FloatingActionButton(
           onPressed: _addNote,
-          backgroundColor: Colors.blue,
+          backgroundColor: _notesBlue,
           elevation: 0,
           child: const Icon(CupertinoIcons.add, color: Colors.white, size: 28),
         ),
       ),
 
-      bottomNavigationBar: LiquidGlassBottomNav(
-        currentIndex: _currentIndex,
-        onChanged: (index) => setState(() => _currentIndex = index),
+      extendBody: true,
+      bottomNavigationBar: GlassSearchableBottomBar(
+        isSearchActive: _isMiniMode || _isSearching,
+        selectedIndex: _currentIndex,
+        onTabSelected: (index) {
+          if (index == _currentIndex && _isMiniMode) {
+            _dismissMiniMode();
+            return;
+          }
+          setState(() {
+            _currentIndex = index;
+            _isSearching = false;
+          });
+        },
+        barHeight: _barHeight,
+        searchBarHeight: 50,
+        horizontalPadding: _barPaddingH,
+        verticalPadding: _barPaddingV,
+        spacing: _barSpacing,
+        selectedIconColor: _notesBlue,
+        unselectedIconColor: _notesBlue.withValues(alpha: 0.72),
+        indicatorColor: _notesBlue.withValues(alpha: 0.18),
+        labelFontSize: 10,
+        iconSize: 28,
+        iconLabelSpacing: 0,
+        quality: GlassQuality.premium,
+        interactionBehavior: GlassInteractionBehavior.full,
+        glassSettings: _barGlassSettings,
+        searchConfig: GlassSearchBarConfig(
+          focusNode: _searchFocusNode,
+          autoFocusOnExpand: false,
+          showsCancelButton: true,
+          expandWhenActive: !_isMiniMode || _isSearching,
+          hintText: 'Buscar notas',
+          onSearchToggle: (active) {
+            setState(() => _isSearching = active);
+            if (!active && _isMiniMode) _dismissMiniMode();
+          },
+          collapsedLogoBuilder: (context) {
+            final tab = _tabs[_currentIndex];
+            return Center(
+              child: IconTheme(
+                data: const IconThemeData(color: _notesBlue, size: 28),
+                child: tab.activeIcon ?? tab.icon,
+              ),
+            );
+          },
+        ),
+        tabs: _tabs,
       ),
     );
   }
@@ -350,141 +481,6 @@ class AppBrandIcon extends StatelessWidget {
         ],
       ),
       child: SvgPicture.asset('assets/ic-notes.svg'),
-    );
-  }
-}
-
-class LiquidGlassBottomNav extends StatelessWidget {
-  const LiquidGlassBottomNav({
-    super.key,
-    required this.currentIndex,
-    required this.onChanged,
-  });
-
-  final int currentIndex;
-  final ValueChanged<int> onChanged;
-
-  static const _items = [
-    CupertinoIcons.doc_text,
-    CupertinoIcons.square_pencil,
-    CupertinoIcons.search,
-    CupertinoIcons.person_crop_circle,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 14),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(34),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            height: 68,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.54),
-              borderRadius: BorderRadius.circular(34),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.76), width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.withValues(alpha: 0.12),
-                  blurRadius: 30,
-                  offset: const Offset(0, 14),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(_items.length, (index) {
-                return Expanded(
-                  child: _LiquidGlassNavItem(
-                    icon: _items[index],
-                    selected: currentIndex == index,
-                    onTap: () => onChanged(index),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LiquidGlassNavItem extends StatelessWidget {
-  const _LiquidGlassNavItem({
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        scale: selected ? 1.05 : 1,
-        child: Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-            width: selected ? 58 : 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: selected ? Colors.blue.withValues(alpha: 0.16) : Colors.transparent,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: selected ? Colors.white.withValues(alpha: 0.82) : Colors.transparent,
-              ),
-              boxShadow: selected
-                  ? [
-                      BoxShadow(
-                        color: Colors.blue.withValues(alpha: 0.18),
-                        blurRadius: 20,
-                        offset: const Offset(0, 9),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: selected ? 1 : 0,
-                  child: Container(
-                    width: 30,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.42),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                ),
-                Icon(
-                  icon,
-                  color: selected ? Colors.blue.shade700 : Colors.blue.withValues(alpha: 0.56),
-                  size: selected ? 25 : 23,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
