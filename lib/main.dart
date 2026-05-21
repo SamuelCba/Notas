@@ -341,8 +341,9 @@ class _NotesScreenState extends State<NotesScreen> {
     final visibleNotes = _visibleNotes();
     final pinnedNotes = visibleNotes.where((n) => n.isPinned).toList();
     final unpinnedNotes = visibleNotes.where((n) => !n.isPinned).toList();
-    final collapse = (_scrollOffset / 82).clamp(0.0, 1.0);
+    final collapse = (_scrollOffset / 72).clamp(0.0, 1.0);
     final largeTitleOpacity = (1 - collapse).clamp(0.0, 1.0);
+    final subtitleOpacity = (1 - collapse * 1.6).clamp(0.0, 1.0);
     final smallTitleOpacity = collapse.clamp(0.0, 1.0);
     final topInset = MediaQuery.paddingOf(context).top;
 
@@ -354,57 +355,121 @@ class _NotesScreenState extends State<NotesScreen> {
         children: [
           SafeArea(
             child: Column(
-          children: [
-            // Header estilo Xiaomi Notes
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Opacity(
-                    opacity: largeTitleOpacity,
-                    child: Transform.translate(
-                      offset: Offset(0, -12 * collapse),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _currentTitle,
-                            style: GoogleFonts.inter(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w800,
-                              color: _primaryTextColor,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Opacity(
+                      opacity: largeTitleOpacity,
+                      child: Transform.translate(
+                        offset: Offset(0, -12 * collapse),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _currentTitle,
+                              style: GoogleFonts.inter(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w800,
+                                color: _primaryTextColor,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _currentSubtitle,
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: _secondaryTextColor,
+                            const SizedBox(height: 4),
+                            AnimatedOpacity(
+                              duration: const Duration(milliseconds: 140),
+                              opacity: subtitleOpacity,
+                              child: Text(
+                                _currentSubtitle,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  color: _secondaryTextColor,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: _toggleSearch,
-                    child: ClipRRect(
+                ),
+                Expanded(
+                  child: ListView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
+                    children: _currentIndex == 3
+                        ? [_buildProfilePanel()]
+                        : [
+                            if (pinnedNotes.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'FIJADAS',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ...pinnedNotes.map((note) => _buildNoteCard(note)),
+                            ],
+                            if (unpinnedNotes.isNotEmpty) ...[
+                              if (pinnedNotes.isNotEmpty) const SizedBox(height: 16),
+                              Text(
+                                'NOTAS',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ...unpinnedNotes.map((note) => _buildNoteCard(note)),
+                            ],
+                            if (visibleNotes.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 70),
+                                child: Center(
+                                  child: Text(
+                                    _searchQuery.trim().isEmpty ? 'Sin tareas' : 'Sin resultados',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      color: Colors.grey[500],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: topInset + 10,
+            right: 16,
+            child: IgnorePointer(
+              ignoring: false,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 180),
+                opacity: 1.0,
+                child: GestureDetector(
+                  onTap: _toggleSearch,
+                  child: ClipRRect(
                     borderRadius: BorderRadius.circular(24),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-	                        decoration: BoxDecoration(
-	                          color: (widget.isDarkMode ? Colors.black : Colors.white)
-	                              .withValues(alpha: 0.68),
-	                          borderRadius: BorderRadius.circular(24),
-	                          border: Border.all(
-	                            color: Colors.white.withValues(
-	                              alpha: widget.isDarkMode ? 0.14 : 0.72,
-	                            ),
-	                          ),
+                        decoration: BoxDecoration(
+                          color: (widget.isDarkMode ? Colors.black : Colors.white).withValues(alpha: 0.68),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withValues(
+                              alpha: widget.isDarkMode ? 0.14 : 0.72,
+                            ),
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.blue.withValues(alpha: 0.08),
@@ -414,6 +479,7 @@ class _NotesScreenState extends State<NotesScreen> {
                           ],
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               _isSearching ? CupertinoIcons.xmark : CupertinoIcons.search,
@@ -427,65 +493,10 @@ class _NotesScreenState extends State<NotesScreen> {
                       ),
                     ),
                   ),
-                  ),
-                ],
+                ),
               ),
             ),
-
-            // Lista de notas
-            Expanded(
-              child: ListView(
-                controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
-                children: _currentIndex == 3
-                    ? [_buildProfilePanel()]
-                    : [
-                  if (pinnedNotes.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'FIJADAS',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...pinnedNotes.map((note) => _buildNoteCard(note)),
-                  ],
-                  if (unpinnedNotes.isNotEmpty) ...[
-                    if (pinnedNotes.isNotEmpty) const SizedBox(height: 16),
-                    Text(
-                      'NOTAS',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...unpinnedNotes.map((note) => _buildNoteCard(note)),
-                  ],
-                  if (visibleNotes.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 70),
-                      child: Center(
-                        child: Text(
-                          _searchQuery.trim().isEmpty ? 'Sin tareas' : 'Sin resultados',
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            color: Colors.grey[500],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 360),
             curve: Curves.easeOutCubic,
@@ -788,46 +799,34 @@ class _NotesScreenState extends State<NotesScreen> {
       key: const ValueKey('mini-bottom-bar'),
       child: GestureDetector(
         onTap: _dismissMiniMode,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
+        child: ClipOval(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
-              height: 58,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
+              width: 66,
+              height: 66,
               decoration: BoxDecoration(
-                color: (widget.isDarkMode ? Colors.black : Colors.white).withValues(alpha: 0.64),
-                borderRadius: BorderRadius.circular(32),
+                shape: BoxShape.circle,
+                color: (widget.isDarkMode ? Colors.black : Colors.white).withValues(alpha: 0.68),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: widget.isDarkMode ? 0.14 : 0.72),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _notesBlue.withValues(alpha: 0.12),
+                    color: _notesBlue.withValues(alpha: 0.14),
                     blurRadius: 24,
                     offset: const Offset(0, 10),
                   ),
                 ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconTheme(
-                    data: const IconThemeData(color: _notesBlue, size: 27),
-                    child: Icon(_currentIcon),
-                  ),
-                  const SizedBox(width: 9),
-                  Text(
-                    _currentTitle,
-                    style: GoogleFonts.inter(
-                      color: _notesBlue,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
+              child: Center(
+                child: Icon(
+                  _currentIcon,
+                  color: _notesBlue,
+                  size: 28,
+                ),
               ),
             ),
           ),
