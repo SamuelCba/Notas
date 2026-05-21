@@ -128,15 +128,15 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   LiquidGlassSettings get _barGlassSettings => const LiquidGlassSettings(
-        glassColor: Color(0x82F8FAFF),
-        thickness: 30,
+        glassColor: Color(0x72FFFFFF),
+        thickness: 34,
         blur: 4,
         chromaticAberration: .01,
         lightAngle: GlassDefaults.lightAngle,
-        lightIntensity: .5,
+        lightIntensity: .72,
         ambientStrength: 0,
         refractiveIndex: 1.2,
-        saturation: 1.18,
+        saturation: 1.28,
         specularSharpness: GlassSpecularSharpness.medium,
       );
 
@@ -193,7 +193,9 @@ class _NotesScreenState extends State<NotesScreen> {
       content: '',
       date: DateTime.now(),
     );
-    final result = await Navigator.of(context).push(_createEditorRoute(newNote));
+    final result = await Navigator.of(context).push(
+      _createEditorRoute(newNote, fromPlusButton: true),
+    );
     if (result != null) {
       setState(() => notes.insert(0, result));
     }
@@ -215,10 +217,15 @@ class _NotesScreenState extends State<NotesScreen> {
     setState(() => notes.removeWhere((n) => n.id == id));
   }
 
-  PageRouteBuilder<Note?> _createEditorRoute(Note note) {
+  PageRouteBuilder<Note?> _createEditorRoute(
+    Note note, {
+    bool fromPlusButton = false,
+  }) {
     return PageRouteBuilder<Note?>(
       transitionDuration: const Duration(milliseconds: 520),
       reverseTransitionDuration: const Duration(milliseconds: 320),
+      opaque: true,
+      barrierColor: Colors.white,
       pageBuilder: (context, animation, secondaryAnimation) => EditNoteScreen(note: note),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
@@ -226,11 +233,11 @@ class _NotesScreenState extends State<NotesScreen> {
           curve: Curves.easeOutBack,
           reverseCurve: Curves.easeInCubic,
         );
-        return FadeTransition(
-          opacity: animation.drive(Tween(begin: 0.0, end: 1.0)),
+        return ColoredBox(
+          color: Colors.grey.shade50,
           child: ScaleTransition(
-            scale: curved.drive(Tween(begin: 0.82, end: 1.0)),
-            alignment: Alignment.bottomRight,
+            scale: curved.drive(Tween(begin: fromPlusButton ? 0.72 : 0.88, end: 1.0)),
+            alignment: fromPlusButton ? Alignment.bottomRight : Alignment.center,
             child: child,
           ),
         );
@@ -423,7 +430,7 @@ class _NotesScreenState extends State<NotesScreen> {
                   clearIconColor: _notesBlue,
                   cancelButtonColor: _notesBlue,
                   settings: _barGlassSettings,
-                  quality: GlassQuality.standard,
+                  quality: GlassQuality.premium,
                   onChanged: (value) => setState(() => _searchQuery = value),
                   onCancel: () {
                     setState(() {
@@ -496,24 +503,10 @@ class _NotesScreenState extends State<NotesScreen> {
                 setState(() => _currentIndex = index);
               },
               extraButton: GlassBottomBarExtraButton(
-                icon: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: _notesBlue,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: _notesBlue.withValues(alpha: 0.34),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(CupertinoIcons.add, color: Colors.white, size: 28),
-                ),
+                icon: const Icon(CupertinoIcons.add_circled_solid),
                 onTap: _addNote,
                 label: 'Nueva nota',
+                iconColor: _notesBlue,
                 size: 58,
               ),
               barHeight: _barHeight,
@@ -526,7 +519,7 @@ class _NotesScreenState extends State<NotesScreen> {
               labelFontSize: 10,
               iconSize: 27,
               iconLabelSpacing: 0,
-              quality: GlassQuality.standard,
+              quality: GlassQuality.premium,
               interactionBehavior: GlassInteractionBehavior.full,
               glassSettings: _barGlassSettings,
               interactionGlowColor: _notesBlue,
