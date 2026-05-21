@@ -343,14 +343,14 @@ class _NotesScreenState extends State<NotesScreen> {
       );
 
   LiquidGlassSettings get _menuGlassSettings => LiquidGlassSettings(
-        glassColor: widget.isDarkMode ? const Color(0xCC1C1C1E) : const Color(0xB8FFFFFF),
-        thickness: 18,
-        blur: 6,
-        lightIntensity: 0.6,
-        ambientStrength: 0.1,
+        glassColor: widget.isDarkMode ? const Color(0xCC1C1C1E) : const Color(0xF11B1F26),
+        thickness: 22,
+        blur: 8,
+        lightIntensity: widget.isDarkMode ? 0.55 : 0.35,
+        ambientStrength: 0.08,
         chromaticAberration: 0.01,
         refractiveIndex: 1.2,
-        saturation: 1.15,
+        saturation: widget.isDarkMode ? 1.08 : 0.98,
         specularSharpness: GlassSpecularSharpness.medium,
       );
 
@@ -442,21 +442,22 @@ class _NotesScreenState extends State<NotesScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        AnimatedScale(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          scale: 1 - (_scrollOffset / 220).clamp(0.0, 0.16),
-                          child: _buildFloatingComposeButton(),
-                        ),
-                        const SizedBox(width: 5),
-                        _buildSearchIconButton(),
-                        const SizedBox(width: 5),
                         _buildTopMoreMenuButton(),
                       ],
                     ),
                   ),
                 ],
               ),
+            ),
+          ),
+          Positioned(
+            right: 16,
+            bottom: 22 + _barHeight + 6,
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              scale: 1 - (_scrollOffset / 220).clamp(0.0, 0.16),
+              child: _buildFloatingComposeButton(),
             ),
           ),
           Positioned(
@@ -493,9 +494,9 @@ class _NotesScreenState extends State<NotesScreen> {
                 autoFocusOnExpand: false,
                 showsCancelButton: false,
                 expandWhenActive: false,
-                hintText: 'Buscar notas',
+                hintText: '',
                 onSearchToggle: (_) {},
-                searchIconColor: _notesBlue,
+                searchIconColor: Colors.transparent,
                 textInputAction: TextInputAction.search,
                 collapsedLogoBuilder: (context) {
                   final tab = _tabs[_currentIndex];
@@ -681,23 +682,9 @@ class _NotesScreenState extends State<NotesScreen> {
       quality: GlassQuality.premium,
       useOwnLayer: true,
       stretch: 0.18,
-      icon: const Icon(CupertinoIcons.square_pencil, color: Colors.white, size: 22),
-    );
-  }
-
-  Widget _buildSearchIconButton() {
-    return GlassButton(
-      onTap: () {},
-      width: 44,
-      height: 44,
-      shape: const LiquidOval(),
-      settings: _triggerGlassSettings,
-      quality: GlassQuality.premium,
-      useOwnLayer: true,
-      stretch: 0.18,
       icon: Icon(
-        CupertinoIcons.search,
-        color: widget.isDarkMode ? Colors.white : _notesBlue,
+        CupertinoIcons.square_pencil,
+        color: widget.isDarkMode ? Colors.white : Colors.black87,
         size: 22,
       ),
     );
@@ -718,9 +705,9 @@ class _NotesScreenState extends State<NotesScreen> {
         quality: GlassQuality.premium,
         useOwnLayer: true,
         stretch: 0.2,
-        icon: const Icon(
+        icon: Icon(
           CupertinoIcons.line_horizontal_3_decrease,
-          color: Colors.white,
+          color: widget.isDarkMode ? Colors.white : Colors.black87,
           size: 24,
         ),
       ),
