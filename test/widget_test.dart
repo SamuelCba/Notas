@@ -13,7 +13,7 @@ void main() {
   testWidgets('Notes app shows example notes', (WidgetTester tester) async {
     await tester.pumpWidget(const NotesApp());
 
-    expect(find.text('Mis Notas'), findsOneWidget);
+    expect(find.text('Notas'), findsWidgets);
     expect(find.text('Comprar la entrada...'), findsOneWidget);
   });
 }

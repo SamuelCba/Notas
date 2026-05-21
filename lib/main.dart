@@ -2,7 +2,6 @@ import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -16,10 +15,7 @@ const _barSpacing = 8.0;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LiquidGlassWidgets.initialize();
-  runApp(LiquidGlassWidgets.wrap(
-    const NotesApp(),
-    adaptiveQuality: true,
-  ));
+  runApp(LiquidGlassWidgets.wrap(const NotesApp()));
 }
 
 class NotesApp extends StatelessWidget {
@@ -75,6 +71,7 @@ class _NotesScreenState extends State<NotesScreen> {
   bool _isMiniMode = false;
   bool _isSearching = false;
   String _searchQuery = '';
+  double _scrollOffset = 0;
 
   @override
   void initState() {
@@ -94,9 +91,13 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   void _onScroll() {
-    final mini = _scrollController.hasClients && _scrollController.offset > 50;
-    if (mini == _isMiniMode) return;
-    setState(() => _isMiniMode = mini);
+    final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+    final mini = offset > 50;
+    if (mini == _isMiniMode && (offset - _scrollOffset).abs() < 2) return;
+    setState(() {
+      _scrollOffset = offset;
+      _isMiniMode = mini;
+    });
   }
 
   void _dismissMiniMode() {
@@ -129,7 +130,7 @@ class _NotesScreenState extends State<NotesScreen> {
   LiquidGlassSettings get _barGlassSettings => const LiquidGlassSettings(
         glassColor: Color(0x82F8FAFF),
         thickness: 30,
-        blur: 3,
+        blur: 4,
         chromaticAberration: .01,
         lightAngle: GlassDefaults.lightAngle,
         lightIntensity: .5,
@@ -192,25 +193,17 @@ class _NotesScreenState extends State<NotesScreen> {
       content: '',
       date: DateTime.now(),
     );
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EditNoteScreen(note: newNote),
-      ),
-    );
-    if (result != null && result is Note) {
+    final result = await Navigator.of(context).push(_createEditorRoute(newNote));
+    if (result != null) {
       setState(() => notes.insert(0, result));
     }
   }
 
   void _editNote(Note note) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EditNoteScreen(note: note),
-      ),
+    final result = await Navigator.of(context).push(
+      _createEditorRoute(note),
     );
-    if (result != null && result is Note) {
+    if (result != null) {
       setState(() {
         final index = notes.indexWhere((n) => n.id == result.id);
         if (index != -1) notes[index] = result;
@@ -220,6 +213,29 @@ class _NotesScreenState extends State<NotesScreen> {
 
   void _deleteNote(String id) {
     setState(() => notes.removeWhere((n) => n.id == id));
+  }
+
+  PageRouteBuilder<Note?> _createEditorRoute(Note note) {
+    return PageRouteBuilder<Note?>(
+      transitionDuration: const Duration(milliseconds: 520),
+      reverseTransitionDuration: const Duration(milliseconds: 320),
+      pageBuilder: (context, animation, secondaryAnimation) => EditNoteScreen(note: note),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: animation.drive(Tween(begin: 0.0, end: 1.0)),
+          child: ScaleTransition(
+            scale: curved.drive(Tween(begin: 0.82, end: 1.0)),
+            alignment: Alignment.bottomRight,
+            child: child,
+          ),
+        );
+      },
+    );
   }
 
   List<Note> _visibleNotes() {
@@ -248,6 +264,10 @@ class _NotesScreenState extends State<NotesScreen> {
     final visibleNotes = _visibleNotes();
     final pinnedNotes = visibleNotes.where((n) => n.isPinned).toList();
     final unpinnedNotes = visibleNotes.where((n) => !n.isPinned).toList();
+    final collapse = (_scrollOffset / 82).clamp(0.0, 1.0);
+    final largeTitleOpacity = (1 - collapse).clamp(0.0, 1.0);
+    final smallTitleOpacity = collapse.clamp(0.0, 1.0);
+    final topInset = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -264,18 +284,18 @@ class _NotesScreenState extends State<NotesScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const AppBrandIcon(size: 42),
-                      const SizedBox(width: 12),
-                      Column(
+                  Opacity(
+                    opacity: largeTitleOpacity,
+                    child: Transform.translate(
+                      offset: Offset(0, -12 * collapse),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Mis Notas',
+                            'Notas',
                             style: GoogleFonts.inter(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -288,7 +308,7 @@ class _NotesScreenState extends State<NotesScreen> {
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                   GestureDetector(
                     onTap: _toggleSearch,
@@ -386,7 +406,7 @@ class _NotesScreenState extends State<NotesScreen> {
             curve: Curves.easeOutCubic,
             left: 18,
             right: 18,
-            bottom: _isSearching ? 104 : -80,
+            top: _isSearching ? topInset + 58 : topInset - 90,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 220),
               opacity: _isSearching ? 1 : 0,
@@ -403,7 +423,7 @@ class _NotesScreenState extends State<NotesScreen> {
                   clearIconColor: _notesBlue,
                   cancelButtonColor: _notesBlue,
                   settings: _barGlassSettings,
-                  quality: GlassQuality.premium,
+                  quality: GlassQuality.standard,
                   onChanged: (value) => setState(() => _searchQuery = value),
                   onCancel: () {
                     setState(() {
@@ -418,9 +438,53 @@ class _NotesScreenState extends State<NotesScreen> {
             ),
           ),
           Positioned(
+            top: 0,
             left: 0,
             right: 0,
-            bottom: 22,
+            child: IgnorePointer(
+              ignoring: smallTitleOpacity < 0.05,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: 14 * smallTitleOpacity,
+                    sigmaY: 14 * smallTitleOpacity,
+                  ),
+                  child: Container(
+                    height: topInset + 54,
+                    padding: EdgeInsets.only(top: topInset),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.78 * smallTitleOpacity),
+                          Colors.white.withValues(alpha: 0.36 * smallTitleOpacity),
+                          Colors.white.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 140),
+                      opacity: smallTitleOpacity,
+                      child: Text(
+                        'Notas',
+                        style: GoogleFonts.inter(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black.withValues(alpha: 0.84),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 30,
             child: GlassBottomBar(
               tabs: _tabs,
               selectedIndex: _currentIndex,
@@ -432,10 +496,24 @@ class _NotesScreenState extends State<NotesScreen> {
                 setState(() => _currentIndex = index);
               },
               extraButton: GlassBottomBarExtraButton(
-                icon: const Icon(CupertinoIcons.add),
+                icon: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: _notesBlue,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: _notesBlue.withValues(alpha: 0.34),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(CupertinoIcons.add, color: Colors.white, size: 28),
+                ),
                 onTap: _addNote,
                 label: 'Nueva nota',
-                iconColor: Colors.white,
                 size: 58,
               ),
               barHeight: _barHeight,
@@ -448,7 +526,7 @@ class _NotesScreenState extends State<NotesScreen> {
               labelFontSize: 10,
               iconSize: 27,
               iconLabelSpacing: 0,
-              quality: GlassQuality.premium,
+              quality: GlassQuality.standard,
               interactionBehavior: GlassInteractionBehavior.full,
               glassSettings: _barGlassSettings,
               interactionGlowColor: _notesBlue,
@@ -537,33 +615,6 @@ class _NotesScreenState extends State<NotesScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class AppBrandIcon extends StatelessWidget {
-  const AppBrandIcon({super.key, this.size = 36});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      padding: EdgeInsets.all(size * 0.14),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade600,
-        borderRadius: BorderRadius.circular(size * 0.28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.22),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: SvgPicture.asset('assets/ic-notes.svg'),
     );
   }
 }

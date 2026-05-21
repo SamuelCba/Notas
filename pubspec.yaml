@@ -10,7 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  flutter_svg: ^2.0.10+1
   intl: ^0.18.1
   google_fonts: ^6.2.1
   liquid_glass_widgets: ^0.9.1
@@ -22,5 +21,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/ic-notes.svg
