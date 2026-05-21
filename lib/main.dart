@@ -97,7 +97,6 @@ class _NotesScreenState extends State<NotesScreen> {
   int _currentIndex = 0;
   bool _isMiniMode = false;
   bool _isSearching = false;
-  bool _searchFieldFocused = false;
   String _searchQuery = '';
   double _scrollOffset = 0;
 
@@ -537,13 +536,10 @@ class _NotesScreenState extends State<NotesScreen> {
                   } else {
                     setState(() {
                       _isSearching = false;
-                      _searchFieldFocused = false;
                     });
                     if (_isMiniMode) _dismissMiniMode();
                   }
                 },
-                onSearchFocusChanged: (focused) =>
-                    setState(() => _searchFieldFocused = focused),
                 searchIconColor: _notesBlue,
                 textInputAction: TextInputAction.search,
                 collapsedLogoBuilder: (context) {
