@@ -56,3 +56,6 @@ android/app/src/profile/
 *.exe
 *.txt
 *.html
+
+# Flutter generated dependency lockfile is useful for reproducible CI builds.
+!pubspec.lock

@@ -1,4 +1,8 @@
+import 'dart:ui';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -127,45 +131,58 @@ class _NotesScreenState extends State<NotesScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Text(
-                        'Mis Notas',
-                        style: GoogleFonts.inter(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${notes.length} notas',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                      const AppBrandIcon(size: 42),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mis Notas',
+                            style: GoogleFonts.inter(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${notes.length} notas',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  // Botón de búsqueda estilo Xiaomi
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.68),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.withValues(alpha: 0.08),
+                              blurRadius: 22,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.search, size: 20, color: Colors.grey[600]),
-                        const SizedBox(width: 8),
-                        Icon(Icons.more_vert, size: 20, color: Colors.grey[600]),
-                      ],
+                        child: Row(
+                          children: [
+                            Icon(CupertinoIcons.search, size: 20, color: Colors.blue.shade600),
+                            const SizedBox(width: 10),
+                            Icon(CupertinoIcons.ellipsis, size: 20, color: Colors.blue.shade600),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -217,54 +234,13 @@ class _NotesScreenState extends State<NotesScreen> {
           onPressed: _addNote,
           backgroundColor: Colors.blue,
           elevation: 0,
-          child: const Icon(Icons.add, color: Colors.white, size: 28),
+          child: const Icon(CupertinoIcons.add, color: Colors.white, size: 28),
         ),
       ),
 
-      // Navbar flotante estilo iOS (como en la segunda foto)
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.all(16),
-        height: 65,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
-          borderRadius: BorderRadius.circular(35),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(Icons.note_alt_outlined, 0),
-            _buildNavItem(Icons.edit_note_outlined, 1),
-            _buildNavItem(Icons.search_outlined, 2),
-            _buildNavItem(Icons.person_outline, 3),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, int index) {
-    final isSelected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Icon(
-          icon,
-          color: isSelected ? Colors.blue : Colors.grey[500],
-          size: 24,
-        ),
+      bottomNavigationBar: LiquidGlassBottomNav(
+        currentIndex: _currentIndex,
+        onChanged: (index) => setState(() => _currentIndex = index),
       ),
     );
   }
@@ -280,7 +256,7 @@ class _NotesScreenState extends State<NotesScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -345,6 +321,168 @@ class _NotesScreenState extends State<NotesScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class AppBrandIcon extends StatelessWidget {
+  const AppBrandIcon({super.key, this.size = 36});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * 0.14),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade600,
+        borderRadius: BorderRadius.circular(size * 0.28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withValues(alpha: 0.22),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: SvgPicture.asset('assets/ic-notes.svg'),
+    );
+  }
+}
+
+class LiquidGlassBottomNav extends StatelessWidget {
+  const LiquidGlassBottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onChanged,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onChanged;
+
+  static const _items = [
+    CupertinoIcons.doc_text,
+    CupertinoIcons.square_pencil,
+    CupertinoIcons.search,
+    CupertinoIcons.person_crop_circle,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(34),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            height: 68,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.54),
+              borderRadius: BorderRadius.circular(34),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.76), width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withValues(alpha: 0.12),
+                  blurRadius: 30,
+                  offset: const Offset(0, 14),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(_items.length, (index) {
+                return Expanded(
+                  child: _LiquidGlassNavItem(
+                    icon: _items[index],
+                    selected: currentIndex == index,
+                    onTap: () => onChanged(index),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiquidGlassNavItem extends StatelessWidget {
+  const _LiquidGlassNavItem({
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        scale: selected ? 1.05 : 1,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            width: selected ? 58 : 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: selected ? Colors.blue.withValues(alpha: 0.16) : Colors.transparent,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: selected ? Colors.white.withValues(alpha: 0.82) : Colors.transparent,
+              ),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: Colors.blue.withValues(alpha: 0.18),
+                        blurRadius: 20,
+                        offset: const Offset(0, 9),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: selected ? 1 : 0,
+                  child: Container(
+                    width: 30,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.42),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+                Icon(
+                  icon,
+                  color: selected ? Colors.blue.shade700 : Colors.blue.withValues(alpha: 0.56),
+                  size: selected ? 25 : 23,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
