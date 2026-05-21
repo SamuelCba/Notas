@@ -69,10 +69,12 @@ class NotesScreen extends StatefulWidget {
 class _NotesScreenState extends State<NotesScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _searchFocusNode = FocusNode();
+  final TextEditingController _searchController = TextEditingController();
   List<Note> notes = [];
   int _currentIndex = 0;
   bool _isMiniMode = false;
   bool _isSearching = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -86,6 +88,7 @@ class _NotesScreenState extends State<NotesScreen> {
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
+    _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
@@ -110,10 +113,23 @@ class _NotesScreenState extends State<NotesScreen> {
     });
   }
 
+  void _toggleSearch() {
+    setState(() => _isSearching = !_isSearching);
+    if (!_isSearching) {
+      _searchController.clear();
+      _searchQuery = '';
+      _searchFocusNode.unfocus();
+      return;
+    }
+    Future<void>.delayed(const Duration(milliseconds: 180), () {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
   LiquidGlassSettings get _barGlassSettings => const LiquidGlassSettings(
-        glassColor: Color(0xDDF8FAFF),
+        glassColor: Color(0x82F8FAFF),
         thickness: 30,
-        blur: 2,
+        blur: 3,
         chromaticAberration: .01,
         lightAngle: GlassDefaults.lightAngle,
         lightIntensity: .5,
@@ -135,9 +151,9 @@ class _NotesScreenState extends State<NotesScreen> {
           activeIcon: Icon(CupertinoIcons.square_pencil),
         ),
         GlassBottomBarTab(
-          label: 'Buscar',
-          icon: Icon(CupertinoIcons.search),
-          activeIcon: Icon(CupertinoIcons.search),
+          label: 'Tareas',
+          icon: Icon(CupertinoIcons.checkmark_circle),
+          activeIcon: Icon(CupertinoIcons.checkmark_circle_fill),
         ),
         GlassBottomBarTab(
           label: 'Perfil',
@@ -169,15 +185,22 @@ class _NotesScreenState extends State<NotesScreen> {
     ];
   }
 
-  void _addNote() {
+  void _addNote() async {
     final newNote = Note(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: 'Nueva nota',
       content: '',
       date: DateTime.now(),
     );
-    setState(() => notes.insert(0, newNote));
-    _editNote(newNote);
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditNoteScreen(note: newNote),
+      ),
+    );
+    if (result != null && result is Note) {
+      setState(() => notes.insert(0, result));
+    }
   }
 
   void _editNote(Note note) async {
@@ -199,15 +222,41 @@ class _NotesScreenState extends State<NotesScreen> {
     setState(() => notes.removeWhere((n) => n.id == id));
   }
 
+  List<Note> _visibleNotes() {
+    Iterable<Note> source = notes;
+    if (_currentIndex == 2) {
+      source = source.where((note) {
+        final text = '${note.title}\n${note.content}'.toLowerCase();
+        return text.contains('•') ||
+            text.contains('tarea') ||
+            text.contains('pendiente') ||
+            text.contains('comprar') ||
+            text.contains('cancelar') ||
+            text.contains('enviar');
+      });
+    }
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return source.toList();
+    return source.where((note) {
+      return note.title.toLowerCase().contains(query) ||
+          note.content.toLowerCase().contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pinnedNotes = notes.where((n) => n.isPinned).toList();
-    final unpinnedNotes = notes.where((n) => !n.isPinned).toList();
+    final visibleNotes = _visibleNotes();
+    final pinnedNotes = visibleNotes.where((n) => n.isPinned).toList();
+    final unpinnedNotes = visibleNotes.where((n) => !n.isPinned).toList();
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: SafeArea(
-        child: Column(
+      resizeToAvoidBottomInset: false,
+      extendBody: true,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
           children: [
             // Header estilo Xiaomi Notes
             Padding(
@@ -241,7 +290,9 @@ class _NotesScreenState extends State<NotesScreen> {
                       ),
                     ],
                   ),
-                  ClipRRect(
+                  GestureDetector(
+                    onTap: _toggleSearch,
+                    child: ClipRRect(
                     borderRadius: BorderRadius.circular(24),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
@@ -261,13 +312,18 @@ class _NotesScreenState extends State<NotesScreen> {
                         ),
                         child: Row(
                           children: [
-                            Icon(CupertinoIcons.search, size: 20, color: Colors.blue.shade600),
+                            Icon(
+                              _isSearching ? CupertinoIcons.xmark : CupertinoIcons.search,
+                              size: 20,
+                              color: Colors.blue.shade600,
+                            ),
                             const SizedBox(width: 10),
                             Icon(CupertinoIcons.ellipsis, size: 20, color: Colors.blue.shade600),
                           ],
                         ),
                       ),
                     ),
+                  ),
                   ),
                 ],
               ),
@@ -277,7 +333,7 @@ class _NotesScreenState extends State<NotesScreen> {
             Expanded(
               child: ListView(
                 controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
                 children: [
                   if (pinnedNotes.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -305,73 +361,100 @@ class _NotesScreenState extends State<NotesScreen> {
                     const SizedBox(height: 8),
                     ...unpinnedNotes.map((note) => _buildNoteCard(note)),
                   ],
+                  if (visibleNotes.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 70),
+                      child: Center(
+                        child: Text(
+                          _searchQuery.trim().isEmpty ? 'Sin tareas' : 'Sin resultados',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
           ],
         ),
       ),
-
-      // Botón flotante de añadir (estilo Xiaomi/iOS)
-      floatingActionButton: Container(
-        margin: const EdgeInsets.only(bottom: 20),
-        child: FloatingActionButton(
-          onPressed: _addNote,
-          backgroundColor: _notesBlue,
-          elevation: 0,
-          child: const Icon(CupertinoIcons.add, color: Colors.white, size: 28),
-        ),
-      ),
-
-      extendBody: true,
-      bottomNavigationBar: GlassSearchableBottomBar(
-        isSearchActive: _isMiniMode || _isSearching,
-        selectedIndex: _currentIndex,
-        onTabSelected: (index) {
-          if (index == _currentIndex && _isMiniMode) {
-            _dismissMiniMode();
-            return;
-          }
-          setState(() {
-            _currentIndex = index;
-            _isSearching = false;
-          });
-        },
-        barHeight: _barHeight,
-        searchBarHeight: 50,
-        horizontalPadding: _barPaddingH,
-        verticalPadding: _barPaddingV,
-        spacing: _barSpacing,
-        selectedIconColor: _notesBlue,
-        unselectedIconColor: _notesBlue.withValues(alpha: 0.72),
-        indicatorColor: _notesBlue.withValues(alpha: 0.18),
-        labelFontSize: 10,
-        iconSize: 28,
-        iconLabelSpacing: 0,
-        quality: GlassQuality.premium,
-        interactionBehavior: GlassInteractionBehavior.full,
-        glassSettings: _barGlassSettings,
-        searchConfig: GlassSearchBarConfig(
-          focusNode: _searchFocusNode,
-          autoFocusOnExpand: false,
-          showsCancelButton: true,
-          expandWhenActive: !_isMiniMode || _isSearching,
-          hintText: 'Buscar notas',
-          onSearchToggle: (active) {
-            setState(() => _isSearching = active);
-            if (!active && _isMiniMode) _dismissMiniMode();
-          },
-          collapsedLogoBuilder: (context) {
-            final tab = _tabs[_currentIndex];
-            return Center(
-              child: IconTheme(
-                data: const IconThemeData(color: _notesBlue, size: 28),
-                child: tab.activeIcon ?? tab.icon,
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 360),
+            curve: Curves.easeOutCubic,
+            left: 18,
+            right: 18,
+            bottom: _isSearching ? 104 : -80,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 220),
+              opacity: _isSearching ? 1 : 0,
+              child: IgnorePointer(
+                ignoring: !_isSearching,
+                child: GlassSearchBar(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  placeholder: 'Buscar notas',
+                  showsCancelButton: true,
+                  useOwnLayer: true,
+                  height: 50,
+                  searchIconColor: _notesBlue,
+                  clearIconColor: _notesBlue,
+                  cancelButtonColor: _notesBlue,
+                  settings: _barGlassSettings,
+                  quality: GlassQuality.premium,
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                  onCancel: () {
+                    setState(() {
+                      _isSearching = false;
+                      _searchQuery = '';
+                      _searchController.clear();
+                    });
+                    _searchFocusNode.unfocus();
+                  },
+                ),
               ),
-            );
-          },
-        ),
-        tabs: _tabs,
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 22,
+            child: GlassBottomBar(
+              tabs: _tabs,
+              selectedIndex: _currentIndex,
+              onTabSelected: (index) {
+                if (index == _currentIndex && _isMiniMode) {
+                  _dismissMiniMode();
+                  return;
+                }
+                setState(() => _currentIndex = index);
+              },
+              extraButton: GlassBottomBarExtraButton(
+                icon: const Icon(CupertinoIcons.add),
+                onTap: _addNote,
+                label: 'Nueva nota',
+                iconColor: Colors.white,
+                size: 58,
+              ),
+              barHeight: _barHeight,
+              horizontalPadding: _barPaddingH,
+              verticalPadding: _barPaddingV,
+              spacing: _barSpacing,
+              selectedIconColor: _notesBlue,
+              unselectedIconColor: _notesBlue.withValues(alpha: 0.72),
+              indicatorColor: _notesBlue.withValues(alpha: 0.18),
+              labelFontSize: 10,
+              iconSize: 27,
+              iconLabelSpacing: 0,
+              quality: GlassQuality.premium,
+              interactionBehavior: GlassInteractionBehavior.full,
+              glassSettings: _barGlassSettings,
+              interactionGlowColor: _notesBlue,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -507,6 +590,39 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     selectedDate = widget.note.date;
   }
 
+  void _insertAtCursor(String value) {
+    final selection = contentController.selection;
+    final text = contentController.text;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    final next = text.replaceRange(start, end, value);
+    contentController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: start + value.length),
+    );
+  }
+
+  void _wrapSelection(String before, String after) {
+    final selection = contentController.selection;
+    final text = contentController.text;
+    if (!selection.isValid || selection.isCollapsed) {
+      _insertAtCursor('$before$after');
+      contentController.selection = TextSelection.collapsed(
+        offset: contentController.selection.baseOffset - after.length,
+      );
+      return;
+    }
+    final selected = text.substring(selection.start, selection.end);
+    final next = text.replaceRange(selection.start, selection.end, '$before$selected$after');
+    contentController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection(
+        baseOffset: selection.start + before.length,
+        extentOffset: selection.end + before.length,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -586,11 +702,31 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Icon(Icons.format_bold, color: Colors.grey[600]),
-                  Icon(Icons.format_italic, color: Colors.grey[600]),
-                  Icon(Icons.format_list_bulleted, color: Colors.grey[600]),
-                  Icon(Icons.check_box_outlined, color: Colors.grey[600]),
-                  Icon(Icons.image_outlined, color: Colors.grey[600]),
+                  IconButton(
+                    tooltip: 'Negrita',
+                    onPressed: () => _wrapSelection('**', '**'),
+                    icon: Icon(Icons.format_bold, color: Colors.grey[600]),
+                  ),
+                  IconButton(
+                    tooltip: 'Cursiva',
+                    onPressed: () => _wrapSelection('_', '_'),
+                    icon: Icon(Icons.format_italic, color: Colors.grey[600]),
+                  ),
+                  IconButton(
+                    tooltip: 'Lista',
+                    onPressed: () => _insertAtCursor('\n• '),
+                    icon: Icon(Icons.format_list_bulleted, color: Colors.grey[600]),
+                  ),
+                  IconButton(
+                    tooltip: 'Tarea',
+                    onPressed: () => _insertAtCursor('\n☐ '),
+                    icon: Icon(Icons.check_box_outlined, color: Colors.grey[600]),
+                  ),
+                  IconButton(
+                    tooltip: 'Imagen',
+                    onPressed: () => _insertAtCursor('\n[imagen] '),
+                    icon: Icon(Icons.image_outlined, color: Colors.grey[600]),
+                  ),
                 ],
               ),
             ),
