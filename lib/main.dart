@@ -176,8 +176,8 @@ class _NotesScreenState extends State<NotesScreen> {
         ),
         GlassBottomBarTab(
           label: 'Editar',
-          icon: Icon(CupertinoIcons.square_pencil),
-          activeIcon: Icon(CupertinoIcons.square_pencil),
+          icon: Icon(CupertinoIcons.sparkles),
+          activeIcon: Icon(CupertinoIcons.sparkles),
         ),
         GlassBottomBarTab(
           label: 'Tareas',
@@ -306,14 +306,9 @@ class _NotesScreenState extends State<NotesScreen> {
     };
   }
 
-  String get _currentSubtitle {
-    if (_currentIndex == 3) return 'Ajustes de la app';
-    return '${notes.length} notas';
-  }
-
   IconData get _currentIcon {
     return switch (_currentIndex) {
-      1 => CupertinoIcons.square_pencil,
+      1 => CupertinoIcons.sparkles,
       2 => CupertinoIcons.checkmark_circle_fill,
       3 => CupertinoIcons.person_crop_circle,
       _ => CupertinoIcons.doc_text,
@@ -354,9 +349,6 @@ class _NotesScreenState extends State<NotesScreen> {
     final pinnedNotes = visibleNotes.where((n) => n.isPinned).toList();
     final unpinnedNotes = visibleNotes.where((n) => !n.isPinned).toList();
     final collapse = (_scrollOffset / 72).clamp(0.0, 1.0);
-    final largeTitleOpacity = (1 - collapse).clamp(0.0, 1.0);
-    final subtitleOpacity = (1 - collapse * 1.9).clamp(0.0, 1.0);
-    final smallTitleOpacity = collapse.clamp(0.0, 1.0);
     final navProgress = Curves.easeOutCubic.transform(collapse);
     final fullBarOpacity = (1 - navProgress * 1.25).clamp(0.0, 1.0);
     final fullBarScale = 1 - navProgress * 0.16;
@@ -370,147 +362,73 @@ class _NotesScreenState extends State<NotesScreen> {
       body: Stack(
         children: [
           SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Opacity(
-                      opacity: largeTitleOpacity,
-                      child: Transform.translate(
-                        offset: Offset(0, -12 * collapse),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _currentTitle,
-                              style: GoogleFonts.inter(
-                                fontSize: 34,
-                                fontWeight: FontWeight.w800,
-                                color: _primaryTextColor,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            AnimatedOpacity(
-                              duration: const Duration(milliseconds: 140),
-                              opacity: subtitleOpacity,
-                              child: Text(
-                                _currentSubtitle,
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: _secondaryTextColor,
-                                ),
-                              ),
-                            ),
-                          ],
+            child: ListView(
+              controller: _scrollController,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
+              children: _currentIndex == 3
+                  ? [_buildProfilePanel()]
+                  : [
+                      if (pinnedNotes.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'FIJADAS',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _mutedLabelColor,
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
-                    children: _currentIndex == 3
-                        ? [_buildProfilePanel()]
-                        : [
-                            if (pinnedNotes.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                'FIJADAS',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: _mutedLabelColor,
-                                ),
+                        const SizedBox(height: 8),
+                        ...pinnedNotes.map((note) => _buildNoteCard(note)),
+                      ],
+                      if (unpinnedNotes.isNotEmpty) ...[
+                        if (pinnedNotes.isNotEmpty) const SizedBox(height: 16),
+                        Text(
+                          'NOTAS',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _mutedLabelColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...unpinnedNotes.map((note) => _buildNoteCard(note)),
+                      ],
+                      if (visibleNotes.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 70),
+                          child: Center(
+                            child: Text(
+                              _searchQuery.trim().isEmpty ? 'Sin tareas' : 'Sin resultados',
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                color: _mutedLabelColor,
+                                fontWeight: FontWeight.w600,
                               ),
-                              const SizedBox(height: 8),
-                              ...pinnedNotes.map((note) => _buildNoteCard(note)),
-                            ],
-                            if (unpinnedNotes.isNotEmpty) ...[
-                              if (pinnedNotes.isNotEmpty) const SizedBox(height: 16),
-                              Text(
-                                'NOTAS',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: _mutedLabelColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ...unpinnedNotes.map((note) => _buildNoteCard(note)),
-                            ],
-                            if (visibleNotes.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 70),
-                                child: Center(
-                                  child: Text(
-                                    _searchQuery.trim().isEmpty ? 'Sin tareas' : 'Sin resultados',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      color: _mutedLabelColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                  ),
-                ),
-              ],
+                            ),
+                          ),
+                        ),
+                    ],
             ),
           ),
           Positioned(
             top: topInset + 10,
+            left: 16,
+            child: _buildFloatingTitlePill(),
+          ),
+          Positioned(
+            top: topInset + 10,
             right: 16,
-            child: IgnorePointer(
-              ignoring: false,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 180),
-                opacity: 1.0,
-                child: GestureDetector(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildFloatingIconButton(
+                  icon: _isSearching ? CupertinoIcons.xmark : CupertinoIcons.search,
                   onTap: _toggleSearch,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                          color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: widget.isDarkMode
-                                ? Colors.white.withValues(alpha: 0.10)
-                                : Colors.black.withValues(alpha: 0.06),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.14 : 0.08),
-                              blurRadius: 22,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _isSearching ? CupertinoIcons.xmark : CupertinoIcons.search,
-                              size: 20,
-                              color: _notesBlue,
-                            ),
-                            const SizedBox(width: 10),
-                            const Icon(CupertinoIcons.ellipsis, size: 20, color: _notesBlue),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                _buildTopMoreMenuButton(),
+              ],
             ),
           ),
           AnimatedPositioned(
@@ -550,50 +468,6 @@ class _NotesScreenState extends State<NotesScreen> {
             ),
           ),
           Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              ignoring: smallTitleOpacity < 0.05,
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: 14 * smallTitleOpacity,
-                    sigmaY: 14 * smallTitleOpacity,
-                  ),
-                  child: Container(
-                    height: topInset + 54,
-                    padding: EdgeInsets.only(top: topInset),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-	                          _backgroundColor.withValues(alpha: 0.78 * smallTitleOpacity),
-	                          _backgroundColor.withValues(alpha: 0.36 * smallTitleOpacity),
-	                          _backgroundColor.withValues(alpha: 0),
-                        ],
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 140),
-                      opacity: smallTitleOpacity,
-                      child: Text(
-	                        _currentTitle,
-	                        style: GoogleFonts.inter(
-	                          fontSize: 17,
-	                          fontWeight: FontWeight.w800,
-	                          color: _primaryTextColor.withValues(alpha: 0.84),
-	                        ),
-	                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
             left: 0,
             right: 0,
             bottom: 30,
@@ -606,7 +480,7 @@ class _NotesScreenState extends State<NotesScreen> {
                     opacity: fullBarOpacity,
                     child: Transform.scale(
                       scale: fullBarScale,
-                      child: _buildFullBottomBar(),
+                      child: _buildFullBottomBar(navProgress),
                     ),
                   ),
                 ),
@@ -616,7 +490,7 @@ class _NotesScreenState extends State<NotesScreen> {
                     opacity: miniBarOpacity,
                     child: Transform.scale(
                       scale: 0.84 + navProgress * 0.16,
-                      child: _buildMiniBottomBar(),
+                      child: _buildMiniBottomBar(navProgress),
                     ),
                   ),
                 ),
@@ -675,7 +549,10 @@ class _NotesScreenState extends State<NotesScreen> {
                   itemBuilder: (context) => [
                     PopupMenuItem(
                       value: 'pin',
-                      child: Text(note.isPinned ? 'Desfijar' : 'Fijar'),
+                      child: Text(
+                        note.isPinned ? 'Desfijar' : 'Fijar',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
+                      ),
                     ),
                     const PopupMenuItem(
                       value: 'delete',
@@ -781,13 +658,154 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-  Widget _buildFullBottomBar() {
-    return GlassBottomBar(
-      key: const ValueKey('full-bottom-bar'),
-      tabs: _tabs,
-      selectedIndex: _currentIndex,
-      onTabSelected: (index) {
-        if (index == _currentIndex && _isMiniMode) {
+  void _handleQuickAction(String value) {
+    switch (value) {
+      case 'new_note':
+        _addNote();
+        break;
+      case 'theme':
+        widget.onThemeChanged(!widget.isDarkMode);
+        break;
+      case 'profile':
+        setState(() => _currentIndex = 3);
+        break;
+    }
+  }
+
+  Widget _buildFloatingTitlePill() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: widget.isDarkMode
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : Colors.black.withValues(alpha: 0.06),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.14 : 0.08),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Text(
+            'Notas',
+            style: GoogleFonts.inter(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: _primaryTextColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: widget.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : Colors.black.withValues(alpha: 0.06),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.14 : 0.08),
+                  blurRadius: 22,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 20, color: _notesBlue),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopMoreMenuButton() {
+    return PopupMenuButton<String>(
+      onSelected: _handleQuickAction,
+      color: _floatingPanelColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      offset: const Offset(0, 14),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'new_note',
+          child: Text(
+            'Nueva nota',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'theme',
+          child: Text(
+            widget.isDarkMode ? 'Modo claro' : 'Modo oscuro',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'profile',
+          child: Text(
+            'Perfil',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
+          ),
+        ),
+      ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: widget.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : Colors.black.withValues(alpha: 0.06),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.14 : 0.08),
+                  blurRadius: 22,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: const Icon(CupertinoIcons.ellipsis, size: 20, color: _notesBlue),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavTab(GlassBottomBarTab tab, int index, {required bool compact}) {
+    final selected = index == _currentIndex;
+    return GestureDetector(
+      onTap: () {
+        if (selected && _isMiniMode) {
           _dismissMiniMode();
           return;
         }
@@ -796,46 +814,148 @@ class _NotesScreenState extends State<NotesScreen> {
           _isSearching = false;
         });
       },
-      extraButton: GlassBottomBarExtraButton(
-        icon: const Icon(CupertinoIcons.add_circled_solid),
-        onTap: _addNote,
-        label: 'Nueva nota',
-        iconColor: _notesBlue,
-        size: 58,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? _notesBlue.withValues(alpha: widget.isDarkMode ? 0.20 : 0.16) : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedScale(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutBack,
+              scale: selected && compact ? 0.90 : selected ? 1.0 : 0.96,
+              child: IconTheme(
+                data: IconThemeData(
+                  color: selected ? _notesBlue : _notesBlue.withValues(alpha: 0.72),
+                  size: selected ? 26 : 24,
+                ),
+                child: selected ? tab.activeIcon : tab.icon,
+              ),
+            ),
+            if (!compact) ...[
+              const SizedBox(width: 6),
+              Text(
+                tab.label,
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? _notesBlue : _notesBlue.withValues(alpha: 0.72),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
-      barHeight: _barHeight,
-      horizontalPadding: _barPaddingH,
-      verticalPadding: _barPaddingV,
-      spacing: _barSpacing,
-      selectedIconColor: _notesBlue,
-      unselectedIconColor: _notesBlue.withValues(alpha: 0.72),
-      indicatorColor: _notesBlue.withValues(alpha: 0.18),
-      labelFontSize: 10,
-      iconSize: 27,
-      iconLabelSpacing: 0,
-      quality: GlassQuality.premium,
-      interactionBehavior: GlassInteractionBehavior.full,
-      glassSettings: _barGlassSettings,
-      interactionGlowColor: _notesBlue,
     );
   }
 
-  Widget _buildMiniBottomBar() {
-    return Center(
-      key: const ValueKey('mini-bottom-bar'),
-      child: GestureDetector(
-        onTap: _dismissMiniMode,
-        child: ClipOval(
+  Widget _buildFullBottomBar(double navProgress) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(34),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            height: 64 - navProgress * 8,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
+              borderRadius: BorderRadius.circular(34 - navProgress * 4),
+              border: Border.all(
+                color: widget.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : Colors.black.withValues(alpha: 0.06),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.16 : 0.10),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _buildNavTab(_tabs[0], 0, compact: false)),
+                Expanded(child: _buildNavTab(_tabs[1], 1, compact: false)),
+                Expanded(child: _buildNavTab(_tabs[2], 2, compact: false)),
+                Expanded(child: _buildNavTab(_tabs[3], 3, compact: false)),
+                PopupMenuButton<String>(
+                  onSelected: _handleQuickAction,
+                  color: _floatingPanelColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  offset: const Offset(0, 14),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'new_note',
+                      child: Text(
+                        'Nueva nota',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'theme',
+                      child: Text(
+                        widget.isDarkMode ? 'Modo claro' : 'Modo oscuro',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'profile',
+                      child: Text(
+                        'Perfil',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: _primaryTextColor),
+                      ),
+                    ),
+                  ],
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6, left: 4),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.20 : 0.14),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(CupertinoIcons.ellipsis, size: 18, color: _notesBlue),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniBottomBar(double navProgress) {
+    final tab = _tabs[_currentIndex];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
-              width: 66,
-              height: 66,
+              height: 54,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
                 color: _floatingPanelColor.withValues(alpha: widget.isDarkMode ? 0.84 : 0.68),
+                borderRadius: BorderRadius.circular(28),
                 border: Border.all(
                   color: widget.isDarkMode
                       ? Colors.white.withValues(alpha: 0.10)
@@ -843,18 +963,34 @@ class _NotesScreenState extends State<NotesScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.16 : 0.14),
+                    color: _notesBlue.withValues(alpha: widget.isDarkMode ? 0.16 : 0.12),
                     blurRadius: 24,
                     offset: const Offset(0, 10),
                   ),
                 ],
               ),
-              child: Center(
-                child: Icon(
-                  _currentIcon,
-                  color: _notesBlue,
-                  size: 28,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedScale(
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeOutBack,
+                    scale: 0.92 + navProgress * 0.08,
+                    child: IconTheme(
+                      data: const IconThemeData(color: _notesBlue, size: 24),
+                      child: tab.activeIcon,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    tab.label,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: _notesBlue,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
