@@ -93,6 +93,7 @@ class _NotesScreenState extends State<NotesScreen> {
   List<Note> notes = [];
   int _currentIndex = 0;
   bool _isMiniMode = false;
+  bool _isSearchExpanded = false;
   double _scrollOffset = 0;
 
   @override
@@ -113,7 +114,7 @@ class _NotesScreenState extends State<NotesScreen> {
 
   void _onScroll() {
     final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
-    final mini = offset > 50;
+    final mini = !_isSearchExpanded && offset > 50;
     if (mini == _isMiniMode && (offset - _scrollOffset).abs() < 2) return;
     setState(() {
       _scrollOffset = offset;
@@ -124,7 +125,9 @@ class _NotesScreenState extends State<NotesScreen> {
   void _dismissMiniMode() {
     setState(() {
       _isMiniMode = false;
+      _isSearchExpanded = false;
     });
+    _searchFocusNode.unfocus();
   }
 
   LiquidGlassSettings get _barGlassSettings => LiquidGlassSettings(
@@ -342,18 +345,6 @@ class _NotesScreenState extends State<NotesScreen> {
         specularSharpness: GlassSpecularSharpness.medium,
       );
 
-  LiquidGlassSettings get _menuGlassSettings => LiquidGlassSettings(
-        glassColor: widget.isDarkMode ? const Color(0xCC1C1C1E) : const Color(0xF11B1F26),
-        thickness: 22,
-        blur: 8,
-        lightIntensity: widget.isDarkMode ? 0.55 : 0.35,
-        ambientStrength: 0.08,
-        chromaticAberration: 0.01,
-        refractiveIndex: 1.2,
-        saturation: widget.isDarkMode ? 1.08 : 0.98,
-        specularSharpness: GlassSpecularSharpness.medium,
-      );
-
   @override
   Widget build(BuildContext context) {
     final visibleNotes = _visibleNotes();
@@ -452,7 +443,7 @@ class _NotesScreenState extends State<NotesScreen> {
           ),
           Positioned(
             right: 16,
-            bottom: 22 + _barHeight + 6,
+            bottom: 22 + _barHeight + 18,
             child: AnimatedScale(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
@@ -465,10 +456,10 @@ class _NotesScreenState extends State<NotesScreen> {
             right: 0,
             bottom: 22,
             child: GlassSearchableBottomBar(
-              isSearchActive: _isMiniMode,
+              isSearchActive: _isMiniMode || _isSearchExpanded,
               selectedIndex: _currentIndex,
               onTabSelected: (index) {
-                if (index == _currentIndex && _isMiniMode) {
+                if (index == _currentIndex && (_isMiniMode || _isSearchExpanded)) {
                   _dismissMiniMode();
                   return;
                 }
@@ -492,17 +483,28 @@ class _NotesScreenState extends State<NotesScreen> {
               searchConfig: GlassSearchBarConfig(
                 focusNode: _searchFocusNode,
                 autoFocusOnExpand: false,
-                showsCancelButton: false,
-                expandWhenActive: false,
-                hintText: '',
-                onSearchToggle: (_) {},
-                searchIconColor: Colors.transparent,
+                showsCancelButton: true,
+                expandWhenActive: true,
+                hintText: 'Buscar notas',
+                onSearchToggle: (active) {
+                  if (active) {
+                    setState(() {
+                      _isMiniMode = false;
+                      _isSearchExpanded = true;
+                    });
+                    _searchFocusNode.requestFocus();
+                  } else {
+                    setState(() => _isSearchExpanded = false);
+                    _searchFocusNode.unfocus();
+                  }
+                },
+                searchIconColor: _notesBlue,
                 textInputAction: TextInputAction.search,
                 collapsedLogoBuilder: (context) {
                   final tab = _tabs[_currentIndex];
                   return Center(
                     child: IconTheme(
-                      data: const IconThemeData(color: _notesBlue, size: 28),
+                      data: const IconThemeData(color: _notesBlue, size: 30),
                       child: tab.activeIcon ?? tab.icon,
                     ),
                   );
@@ -675,59 +677,117 @@ class _NotesScreenState extends State<NotesScreen> {
   Widget _buildFloatingComposeButton() {
     return GlassButton(
       onTap: _addNote,
-      width: 44,
-      height: 44,
+      width: 52,
+      height: 52,
       shape: const LiquidOval(),
       settings: _triggerGlassSettings,
       quality: GlassQuality.premium,
       useOwnLayer: true,
-      stretch: 0.18,
+      stretch: 0.24,
       icon: Icon(
         CupertinoIcons.square_pencil,
         color: widget.isDarkMode ? Colors.white : Colors.black87,
-        size: 22,
+        size: 24,
       ),
     );
   }
 
   Widget _buildTopMoreMenuButton() {
-    return GlassMenu(
-      menuWidth: 240,
-      glassSettings: _menuGlassSettings,
-      menuBorderRadius: 16,
-      quality: GlassQuality.premium,
-      triggerBuilder: (context, toggleMenu) => GlassButton(
-        onTap: toggleMenu,
-        width: 44,
-        height: 44,
-        shape: const LiquidOval(),
-        settings: _triggerGlassSettings,
-        quality: GlassQuality.premium,
-        useOwnLayer: true,
-        stretch: 0.2,
-        icon: Icon(
-          CupertinoIcons.line_horizontal_3_decrease,
-          color: widget.isDarkMode ? Colors.white : Colors.black87,
-          size: 24,
+    final menuColor = widget.isDarkMode
+        ? const Color(0xFF1C1C1E)
+        : const Color(0xFFF2F2F7);
+    final menuBorder = widget.isDarkMode
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        popupMenuTheme: PopupMenuThemeData(
+          color: menuColor,
+          elevation: 18,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: menuBorder),
+          ),
         ),
       ),
-      items: [
-        GlassMenuItem(
-          title: 'Nueva nota',
-          icon: const Icon(CupertinoIcons.square_pencil),
-          onTap: _addNote,
+      child: PopupMenuButton<String>(
+        padding: EdgeInsets.zero,
+        offset: const Offset(0, 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: menuBorder),
         ),
-        GlassMenuItem(
-          title: widget.isDarkMode ? 'Modo claro' : 'Modo oscuro',
-          icon: Icon(widget.isDarkMode ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_stars_fill),
-          onTap: () => widget.onThemeChanged(!widget.isDarkMode),
+        color: menuColor,
+        onSelected: (value) {
+          switch (value) {
+            case 'new':
+              _addNote();
+              break;
+            case 'theme':
+              widget.onThemeChanged(!widget.isDarkMode);
+              break;
+            case 'profile':
+              setState(() => _currentIndex = 3);
+              break;
+          }
+        },
+        itemBuilder: (context) => [
+          _menuPopupItem(
+            value: 'new',
+            icon: CupertinoIcons.square_pencil,
+            label: 'Nueva nota',
+          ),
+          _menuPopupItem(
+            value: 'theme',
+            icon: widget.isDarkMode
+                ? CupertinoIcons.sun_max_fill
+                : CupertinoIcons.moon_stars_fill,
+            label: widget.isDarkMode ? 'Modo claro' : 'Modo oscuro',
+          ),
+          _menuPopupItem(
+            value: 'profile',
+            icon: CupertinoIcons.person_crop_circle,
+            label: 'Perfil',
+          ),
+        ],
+        child: SizedBox(
+          width: 52,
+          height: 52,
+          child: Icon(
+            CupertinoIcons.line_horizontal_3_decrease,
+            color: widget.isDarkMode ? Colors.white : Colors.black87,
+            size: 28,
+          ),
         ),
-        GlassMenuItem(
-          title: 'Perfil',
-          icon: const Icon(CupertinoIcons.person_crop_circle),
-          onTap: () => setState(() => _currentIndex = 3),
-        ),
-      ],
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _menuPopupItem({
+    required String value,
+    required IconData icon,
+    required String label,
+  }) {
+    final textColor = widget.isDarkMode ? Colors.white : Colors.black87;
+    final iconColor = widget.isDarkMode ? Colors.white70 : Colors.black54;
+    return PopupMenuItem<String>(
+      value: value,
+      height: 46,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: iconColor),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
