@@ -931,6 +931,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
   late TextEditingController titleController;
   late TextEditingController contentController;
   late bool isPinned;
+  bool _isFormatBarExpanded = false;
   DateTime? selectedDate;
 
   @override
@@ -1102,15 +1103,18 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildFormatButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), secondaryTextColor),
-                _buildFormatButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), secondaryTextColor),
-                _buildFormatButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), secondaryTextColor),
-                _buildFormatButton(CupertinoIcons.checkmark_square, () => _insertAtCursor('\n☐ '), secondaryTextColor),
-                _buildFormatButton(CupertinoIcons.camera, () => _insertAtCursor('\n[imagen] '), secondaryTextColor),
-              ],
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: animation.drive(Tween(begin: const Offset(0, 0.2), end: Offset.zero)),
+                    child: child,
+                  ),
+                );
+              },
+              child: _isFormatBarExpanded ? _buildExpandedFormatBar(secondaryTextColor) : _buildInitialFormatBar(secondaryTextColor),
             ),
           ),
         ],
@@ -1118,16 +1122,97 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     );
   }
 
-  Widget _buildFormatButton(IconData icon, VoidCallback onTap, Color color) {
+  Widget _buildInitialFormatBar(Color color) {
+    return Row(
+      key: const ValueKey('initial'),
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _buildFormatButton(CupertinoIcons.textformat, () => setState(() => _isFormatBarExpanded = true), color, label: 'T'),
+        _buildFormatButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), color),
+        _buildFormatButton(CupertinoIcons.checkmark_square, () => _insertAtCursor('\n☐ '), color),
+        _buildFormatButton(CupertinoIcons.camera, () => _insertAtCursor('\n[imagen] '), color),
+      ],
+    );
+  }
+
+  Widget _buildExpandedFormatBar(Color color) {
+    return Row(
+      key: const ValueKey('expanded'),
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        IconButton(
+          icon: Icon(CupertinoIcons.chevron_left, color: color, size: 20),
+          onPressed: () => setState(() => _isFormatBarExpanded = false),
+        ),
+        _buildFormatButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), color),
+        _buildFormatButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), color),
+        _buildFormatButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), color),
+        _buildFormatButton(CupertinoIcons.textformat_size, () => _showFontPicker(), color),
+      ],
+    );
+  }
+
+  void _showFontPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: widget.isDarkMode ? const Color(0xFF161B22) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Seleccionar Fuente',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: widget.isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _fontTile('Inter', 'inter'),
+              _fontTile('Roboto', 'roboto'),
+              _fontTile('Lora', 'lora'),
+              _fontTile('Poppins', 'poppins'),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _fontTile(String name, String tag) {
+    return ListTile(
+      title: Text(name, style: GoogleFonts.getFont(name)),
+      onTap: () {
+        _wrapSelection('<font=$tag>', '</font>');
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  Widget _buildFormatButton(IconData icon, VoidCallback onTap, Color color, {String? label}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, size: 22, color: color),
+        child: label != null
+            ? Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              )
+            : Icon(icon, size: 22, color: color),
       ),
     );
   }
