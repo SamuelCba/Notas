@@ -240,7 +240,7 @@ class _NotesScreenState extends State<NotesScreen> {
   void _addNote() async {
     final newNote = Note(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: 'Nueva nota',
+      title: '',
       content: '',
       date: DateTime.now(),
     );
@@ -376,7 +376,7 @@ class _NotesScreenState extends State<NotesScreen> {
           SafeArea(
             child: ListView(
               controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
+              padding: const EdgeInsets.fromLTRB(16, 80, 16, 150),
               children: _currentIndex == 3
                   ? [_buildProfilePanel()]
                   : [
@@ -423,6 +423,50 @@ class _NotesScreenState extends State<NotesScreen> {
                     ],
             ),
           ),
+          // Top Gradient Overlay
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: topInset + 100,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      _backgroundColor,
+                      _backgroundColor,
+                      _backgroundColor.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.4, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Bottom Gradient Overlay
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 120,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      _backgroundColor,
+                      _backgroundColor.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
           Positioned(
             top: topInset + 10,
             left: 16,
@@ -430,9 +474,21 @@ class _NotesScreenState extends State<NotesScreen> {
             child: SizedBox(
               height: 56,
               child: Stack(
-                alignment: Alignment.center,
+                alignment: Alignment.centerLeft,
                 children: [
-                  Center(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _cardColor,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.2 : 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: Text(
                       'Notas',
                       style: GoogleFonts.inter(
