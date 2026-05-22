@@ -539,7 +539,7 @@ class _NotesScreenState extends State<NotesScreen> {
           ),
           Positioned(
             right: 16,
-            bottom: 22 + _barHeight + 18,
+            bottom: 10 + _barHeight + 18,
             child: AnimatedScale(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
@@ -550,13 +550,17 @@ class _NotesScreenState extends State<NotesScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 22,
+            bottom: 10,
             child: GlassSearchableBottomBar(
               isSearchActive: _isMiniMode || _isSearchExpanded,
               selectedIndex: _currentIndex,
               onTabSelected: (index) {
-                if (index == _currentIndex && (_isMiniMode || _isSearchExpanded)) {
+                if (_isMiniMode) {
                   _dismissMiniMode();
+                  return;
+                }
+                if (index == _currentIndex && _isSearchExpanded) {
+                  setState(() => _isSearchExpanded = false);
                   return;
                 }
                 setState(() => _currentIndex = index);
@@ -593,7 +597,10 @@ class _NotesScreenState extends State<NotesScreen> {
                       });
                     }
                   } else {
-                    setState(() => _isSearchExpanded = false);
+                    setState(() {
+                      _isSearchExpanded = false;
+                      _isMiniMode = false;
+                    });
                     _searchFocusNode.unfocus();
                   }
                 },
@@ -601,10 +608,13 @@ class _NotesScreenState extends State<NotesScreen> {
                 textInputAction: TextInputAction.search,
                 collapsedLogoBuilder: (context) {
                   final tab = _tabs[_currentIndex];
-                  return Center(
-                    child: IconTheme(
-                      data: const IconThemeData(color: _notesBlue, size: 30),
-                      child: tab.activeIcon ?? tab.icon,
+                  return GestureDetector(
+                    onTap: _dismissMiniMode,
+                    child: Center(
+                      child: IconTheme(
+                        data: const IconThemeData(color: _notesBlue, size: 30),
+                        child: tab.activeIcon ?? tab.icon,
+                      ),
                     ),
                   );
                 },
@@ -776,8 +786,8 @@ class _NotesScreenState extends State<NotesScreen> {
   Widget _buildFloatingComposeButton() {
     return GlassButton(
       onTap: _addNote,
-      width: 50,
-      height: 50,
+      width: 60,
+      height: 60,
       shape: const LiquidOval(),
       settings: _triggerGlassSettings,
       quality: GlassQuality.premium,
@@ -786,7 +796,7 @@ class _NotesScreenState extends State<NotesScreen> {
       icon: Icon(
         CupertinoIcons.square_pencil,
         color: widget.isDarkMode ? Colors.white : Colors.black87,
-        size: 24,
+        size: 28,
       ),
     );
   }
