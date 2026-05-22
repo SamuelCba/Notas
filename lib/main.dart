@@ -105,6 +105,7 @@ class _NotesScreenState extends State<NotesScreen> {
   bool _isMiniMode = false;
   bool _isSearchExpanded = false;
   bool _manualExpand = false;
+  double _manualExpandOffset = 0;
   double _scrollOffset = 0;
 
   @override
@@ -130,11 +131,13 @@ class _NotesScreenState extends State<NotesScreen> {
   void _onScroll() {
     final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
     
-    // Si el usuario expandió manualmente, esperamos a que se mueva más de 50px para volver a mini
+    // Si el usuario expandió manualmente, evitamos que vuelva a mini 
+    // hasta que haga un scroll significativo desde ese punto
     if (_manualExpand) {
-      if ((offset - _scrollOffset).abs() > 50) {
+      if ((offset - _manualExpandOffset).abs() > 60) {
         setState(() => _manualExpand = false);
       } else {
+        _scrollOffset = offset;
         return;
       }
     }
@@ -151,7 +154,8 @@ class _NotesScreenState extends State<NotesScreen> {
     setState(() {
       _isMiniMode = false;
       _isSearchExpanded = false;
-      _manualExpand = true; // Evita que se cierre al instante por el scroll
+      _manualExpand = true;
+      _manualExpandOffset = _scrollController.hasClients ? _scrollController.offset : 0;
     });
     _searchFocusNode.unfocus();
     _searchController.clear();
@@ -581,10 +585,13 @@ class _NotesScreenState extends State<NotesScreen> {
                 hintText: 'Buscar notas',
                 onSearchToggle: (active) {
                   if (active) {
-                    setState(() {
-                      _isMiniMode = false;
-                      _isSearchExpanded = true;
-                    });
+                    if (_isMiniMode) {
+                      _dismissMiniMode();
+                    } else {
+                      setState(() {
+                        _isSearchExpanded = true;
+                      });
+                    }
                   } else {
                     setState(() => _isSearchExpanded = false);
                     _searchFocusNode.unfocus();
@@ -769,8 +776,8 @@ class _NotesScreenState extends State<NotesScreen> {
   Widget _buildFloatingComposeButton() {
     return GlassButton(
       onTap: _addNote,
-      width: 52,
-      height: 52,
+      width: 50,
+      height: 50,
       shape: const LiquidOval(),
       settings: _triggerGlassSettings,
       quality: GlassQuality.premium,
