@@ -90,6 +90,7 @@ class NotesScreen extends StatefulWidget {
 class _NotesScreenState extends State<NotesScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _searchFocusNode = FocusNode();
+  final TextEditingController _searchController = TextEditingController();
   List<Note> notes = [];
   int _currentIndex = 0;
   bool _isMiniMode = false;
@@ -101,6 +102,9 @@ class _NotesScreenState extends State<NotesScreen> {
     super.initState();
     _loadExampleNotes();
     _scrollController.addListener(_onScroll);
+    _searchController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -109,6 +113,7 @@ class _NotesScreenState extends State<NotesScreen> {
       ..removeListener(_onScroll)
       ..dispose();
     _searchFocusNode.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -128,18 +133,19 @@ class _NotesScreenState extends State<NotesScreen> {
       _isSearchExpanded = false;
     });
     _searchFocusNode.unfocus();
+    _searchController.clear();
   }
 
   LiquidGlassSettings get _barGlassSettings => LiquidGlassSettings(
-        glassColor: widget.isDarkMode ? const Color(0xCC11161E) : const Color(0x72FFFFFF),
+        glassColor: widget.isDarkMode ? const Color(0xCC11161E) : const Color(0x8AFFFFFF),
         thickness: 34,
-        blur: 4,
+        blur: 12,
         chromaticAberration: .01,
         lightAngle: GlassDefaults.lightAngle,
-        lightIntensity: widget.isDarkMode ? .22 : .72,
+        lightIntensity: widget.isDarkMode ? .22 : .82,
         ambientStrength: 0,
-        refractiveIndex: 1.2,
-        saturation: widget.isDarkMode ? 1.12 : 1.28,
+        refractiveIndex: 1.25,
+        saturation: widget.isDarkMode ? 1.12 : 1.4,
         specularSharpness: GlassSpecularSharpness.medium,
       );
 
@@ -295,6 +301,15 @@ class _NotesScreenState extends State<NotesScreen> {
 
   List<Note> _visibleNotes() {
     Iterable<Note> source = notes;
+    
+    final query = _searchController.text.toLowerCase();
+    if (query.isNotEmpty) {
+      source = source.where((note) {
+        return note.title.toLowerCase().contains(query) ||
+               note.content.toLowerCase().contains(query);
+      });
+    }
+
     if (_currentIndex == 2) {
       source = source.where((note) {
         final text = '${note.title}\n${note.content}'.toLowerCase();
@@ -310,7 +325,7 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   Color get _backgroundColor {
-    return widget.isDarkMode ? const Color(0xFF0D1117) : Colors.grey.shade50;
+    return widget.isDarkMode ? const Color(0xFF0D1117) : const Color(0xFFF0F2F5);
   }
 
   Color get _cardColor {
@@ -481,6 +496,7 @@ class _NotesScreenState extends State<NotesScreen> {
               glassSettings: _barGlassSettings,
               interactionGlowColor: _notesBlue,
               searchConfig: GlassSearchBarConfig(
+                controller: _searchController,
                 focusNode: _searchFocusNode,
                 autoFocusOnExpand: false,
                 showsCancelButton: true,
@@ -810,6 +826,7 @@ class EditNoteScreen extends StatefulWidget {
 class _EditNoteScreenState extends State<EditNoteScreen> {
   late TextEditingController titleController;
   late TextEditingController contentController;
+  late bool isPinned;
   DateTime? selectedDate;
 
   @override
@@ -818,6 +835,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     titleController = TextEditingController(text: widget.note.title);
     contentController = TextEditingController(text: widget.note.content);
     selectedDate = widget.note.date;
+    isPinned = widget.note.isPinned;
   }
 
   void _insertAtCursor(String value) {
@@ -855,125 +873,157 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = widget.isDarkMode ? const Color(0xFF0D1117) : Colors.grey.shade50;
+    final backgroundColor = widget.isDarkMode ? const Color(0xFF0D1117) : const Color(0xFFF0F2F5);
     final cardColor = widget.isDarkMode ? const Color(0xFF161B22) : Colors.white;
     final primaryTextColor = widget.isDarkMode ? const Color(0xFFF5F7FA) : Colors.black;
     final secondaryTextColor = widget.isDarkMode ? const Color(0xFF9AA4B2) : Colors.grey.shade600;
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: primaryTextColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Editar Nota',
-          style: GoogleFonts.inter(
-            color: primaryTextColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: () {
-              final updatedNote = Note(
-                id: widget.note.id,
-                title: titleController.text.isEmpty ? 'Sin título' : titleController.text,
-                content: contentController.text,
-                date: selectedDate ?? DateTime.now(),
-                isPinned: widget.note.isPinned,
-              );
-              Navigator.pop(context, updatedNote);
-            },
-            child: Text(
-              'Guardar',
-              style: GoogleFonts.inter(
-                color: Colors.blue,
-                fontWeight: FontWeight.w600,
+      body: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(CupertinoIcons.chevron_back, color: _notesBlue, size: 28),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(
+                      isPinned ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
+                      color: isPinned ? Colors.amber[700] : secondaryTextColor,
+                      size: 22,
+                    ),
+                    onPressed: () => setState(() => isPinned = !isPinned),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      final updatedNote = Note(
+                        id: widget.note.id,
+                        title: titleController.text.isEmpty ? 'Sin título' : titleController.text,
+                        content: contentController.text,
+                        date: selectedDate ?? DateTime.now(),
+                        isPinned: isPinned,
+                      );
+                      Navigator.pop(context, updatedNote);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _notesBlue,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Listo',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
               ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              children: [
+                const SizedBox(height: 12),
+                Text(
+                  DateFormat('d MMMM yyyy, HH:mm').format(selectedDate ?? DateTime.now()).toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: secondaryTextColor.withValues(alpha: 0.7),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: titleController,
+                  style: GoogleFonts.inter(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: primaryTextColor,
+                    letterSpacing: -0.5,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Título',
+                    hintStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.4)),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: contentController,
+                  style: GoogleFonts.inter(
+                    fontSize: 17,
+                    height: 1.6,
+                    color: primaryTextColor.withValues(alpha: 0.9),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Empieza a escribir...',
+                    hintStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.4)),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  maxLines: null,
+                  scrollPhysics: const NeverScrollableScrollPhysics(),
+                ),
+                const SizedBox(height: 100),
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.paddingOf(context).bottom + 12),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.3 : 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildFormatButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), secondaryTextColor),
+                _buildFormatButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), secondaryTextColor),
+                _buildFormatButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), secondaryTextColor),
+                _buildFormatButton(CupertinoIcons.checkmark_square, () => _insertAtCursor('\n☐ '), secondaryTextColor),
+                _buildFormatButton(CupertinoIcons.camera, () => _insertAtCursor('\n[imagen] '), secondaryTextColor),
+              ],
             ),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            TextField(
-              controller: titleController,
-	              style: GoogleFonts.inter(
-	                fontSize: 24,
-	                fontWeight: FontWeight.w600,
-	                color: primaryTextColor,
-	              ),
-	              decoration: InputDecoration(
-	                hintText: 'Título',
-	                hintStyle: TextStyle(color: secondaryTextColor),
-	                border: InputBorder.none,
-	              ),
-	            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: TextField(
-                controller: contentController,
-	                style: GoogleFonts.inter(
-	                  fontSize: 16,
-	                  height: 1.5,
-	                  color: primaryTextColor,
-	                ),
-	                decoration: InputDecoration(
-	                  hintText: 'Escribe tu nota...',
-	                  hintStyle: TextStyle(color: secondaryTextColor),
-	                  border: InputBorder.none,
-	                ),
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(12),
-	            decoration: BoxDecoration(
-	                color: cardColor,
-	                borderRadius: BorderRadius.circular(15),
-	              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    tooltip: 'Negrita',
-                    onPressed: () => _wrapSelection('**', '**'),
-	                    icon: Icon(Icons.format_bold, color: secondaryTextColor),
-                  ),
-                  IconButton(
-                    tooltip: 'Cursiva',
-                    onPressed: () => _wrapSelection('_', '_'),
-	                    icon: Icon(Icons.format_italic, color: secondaryTextColor),
-                  ),
-                  IconButton(
-                    tooltip: 'Lista',
-                    onPressed: () => _insertAtCursor('\n• '),
-	                    icon: Icon(Icons.format_list_bulleted, color: secondaryTextColor),
-                  ),
-                  IconButton(
-                    tooltip: 'Tarea',
-                    onPressed: () => _insertAtCursor('\n☐ '),
-	                    icon: Icon(Icons.check_box_outlined, color: secondaryTextColor),
-                  ),
-                  IconButton(
-                    tooltip: 'Imagen',
-                    onPressed: () => _insertAtCursor('\n[imagen] '),
-	                    icon: Icon(Icons.image_outlined, color: secondaryTextColor),
-                  ),
-                ],
-              ),
-            ),
-          ],
+    );
+  }
+
+  Widget _buildFormatButton(IconData icon, VoidCallback onTap, Color color) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
         ),
+        child: Icon(icon, size: 22, color: color),
       ),
     );
   }
