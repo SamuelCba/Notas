@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -12,6 +13,14 @@ const _barSpacing = 8.0;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LiquidGlassWidgets.initialize();
+  
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarContrastEnforced: false,
+    statusBarColor: Colors.transparent,
+  ));
+
   runApp(LiquidGlassWidgets.wrap(const NotesApp()));
 }
 
@@ -95,6 +104,7 @@ class _NotesScreenState extends State<NotesScreen> {
   int _currentIndex = 0;
   bool _isMiniMode = false;
   bool _isSearchExpanded = false;
+  bool _manualExpand = false;
   double _scrollOffset = 0;
 
   @override
@@ -119,6 +129,16 @@ class _NotesScreenState extends State<NotesScreen> {
 
   void _onScroll() {
     final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+    
+    // Si el usuario expandió manualmente, esperamos a que se mueva más de 50px para volver a mini
+    if (_manualExpand) {
+      if ((offset - _scrollOffset).abs() > 50) {
+        setState(() => _manualExpand = false);
+      } else {
+        return;
+      }
+    }
+
     final mini = !_isSearchExpanded && offset > 50;
     if (mini == _isMiniMode && (offset - _scrollOffset).abs() < 2) return;
     setState(() {
@@ -131,6 +151,7 @@ class _NotesScreenState extends State<NotesScreen> {
     setState(() {
       _isMiniMode = false;
       _isSearchExpanded = false;
+      _manualExpand = true; // Evita que se cierre al instante por el scroll
     });
     _searchFocusNode.unfocus();
     _searchController.clear();
@@ -564,7 +585,6 @@ class _NotesScreenState extends State<NotesScreen> {
                       _isMiniMode = false;
                       _isSearchExpanded = true;
                     });
-                    _searchFocusNode.requestFocus();
                   } else {
                     setState(() => _isSearchExpanded = false);
                     _searchFocusNode.unfocus();
@@ -823,13 +843,24 @@ class _NotesScreenState extends State<NotesScreen> {
             label: 'Perfil',
           ),
         ],
-        child: SizedBox(
+        child: Container(
           width: 52,
-          height: 52,
+          height: 42,
+          decoration: BoxDecoration(
+            color: _cardColor,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.2 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
           child: Icon(
             CupertinoIcons.line_horizontal_3_decrease,
             color: widget.isDarkMode ? Colors.white : Colors.black87,
-            size: 28,
+            size: 24,
           ),
         ),
       ),
