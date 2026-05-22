@@ -889,7 +889,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(CupertinoIcons.chevron_back, color: _notesBlue, size: 28),
+                    icon: const Icon(CupertinoIcons.chevron_back, color: _notesBlue, size: 28),
                     onPressed: () => Navigator.pop(context),
                   ),
                   const Spacer(),
