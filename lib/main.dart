@@ -605,6 +605,10 @@ class _NotesScreenState extends State<NotesScreen> {
                   }
                 },
                 searchIconColor: _notesBlue,
+                textStyle: GoogleFonts.inter(
+                  color: widget.isDarkMode ? Colors.white : Colors.black,
+                  fontSize: 16,
+                ),
                 textInputAction: TextInputAction.search,
                 collapsedLogoBuilder: (context) {
                   final tab = _tabs[_currentIndex];
@@ -1110,11 +1114,6 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
                         maxLines: null,
                         scrollPhysics: const NeverScrollableScrollPhysics(),
                       ),
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: _buildMindMapBadge(accentColor),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 100),
@@ -1128,28 +1127,6 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     );
   }
 
-  Widget _buildMindMapBadge(Color accentColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accentColor),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.linear_scale_rounded, color: accentColor, size: 16),
-          const SizedBox(width: 6),
-          Text(
-            'Crear un mapa mental',
-            style: GoogleFonts.inter(fontSize: 12, color: accentColor, fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDynamicBottomToolbar(Color cardColor, Color secondaryColor, Color primaryColor, Color accentColor) {
     return Container(
       padding: EdgeInsets.fromLTRB(8, 8, 8, MediaQuery.paddingOf(context).bottom + 8),
@@ -1158,9 +1135,19 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
         border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 0.5)),
       ),
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
+        duration: const Duration(milliseconds: 350),
         switchInCurve: Curves.easeInOutCubic,
         switchOutCurve: Curves.easeInOutCubic,
+        transitionBuilder: (child, animation) {
+          final rotate = Tween(begin: 0.0, end: 0.5).animate(animation);
+          return FadeTransition(
+            opacity: animation,
+            child: RotationTransition(
+              turns: child.key == const ValueKey('format') ? rotate : const AlwaysStoppedAnimation(0),
+              child: child,
+            ),
+          );
+        },
         child: _isFormatBarExpanded 
           ? _buildTextFormatMode(secondaryColor, primaryColor, accentColor)
           : _buildInitialMode(secondaryColor),
@@ -1173,12 +1160,12 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
       key: const ValueKey('initial'),
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _toolbarIconButton(Icons.auto_awesome_outlined, () {}, color, isAi: true),
-        _toolbarIconButton(Icons.keyboard_voice_rounded, () {}, color),
-        _toolbarIconButton(Icons.image_outlined, () {}, color),
-        _toolbarIconButton(Icons.gesture_rounded, () {}, color),
-        _toolbarIconButton(Icons.check_box_outlined, () => _insertAtCursor('\n☐ '), color),
-        _toolbarIconButton(Icons.title_rounded, () => setState(() => _isFormatBarExpanded = true), color),
+        _toolbarIconButton(CupertinoIcons.sparkles, () {}, color, isAi: true),
+        _toolbarIconButton(CupertinoIcons.mic, () {}, color),
+        _toolbarIconButton(CupertinoIcons.photo, () {}, color),
+        _toolbarIconButton(CupertinoIcons.scribble, () {}, color),
+        _toolbarIconButton(CupertinoIcons.checkmark_square, () => _insertAtCursor('\n☐ '), color),
+        _toolbarIconButton(CupertinoIcons.textformat, () => setState(() => _isFormatBarExpanded = true), color),
       ],
     );
   }
@@ -1194,25 +1181,25 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               children: [
-                _toolbarIconButton(Icons.border_color_rounded, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor),
-                _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20),
-                _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18),
-                _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16),
-                _toolbarIconButton(Icons.format_bold_rounded, () => _wrapSelection('**', '**'), primaryColor),
-                _toolbarIconButton(Icons.format_italic_rounded, () => _wrapSelection('_', '_'), primaryColor),
-                _toolbarIconButton(Icons.format_underlined_rounded, () => _wrapSelection('<u>', '</u>'), primaryColor),
-                _toolbarIconButton(Icons.strikethrough_s_rounded, () => _wrapSelection('~~', '~~'), primaryColor),
-                _toolbarIconButton(Icons.format_list_bulleted_rounded, () => _insertAtCursor('\n• '), primaryColor),
-                _toolbarIconButton(Icons.format_list_numbered_rounded, () => _insertAtCursor('\n1. '), primaryColor),
-                _toolbarIconButton(Icons.format_quote_rounded, () => _wrapSelection('\n> ', '\n'), primaryColor),
-                _toolbarIconButton(Icons.format_align_left_rounded, () {}, primaryColor),
-                _toolbarIconButton(Icons.format_align_center_rounded, () {}, primaryColor),
-                _toolbarIconButton(Icons.format_indent_increase_rounded, () {}, primaryColor),
+                _toolbarIconButton(CupertinoIcons.pencil_outline, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor),
+                _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20, primaryColor),
+                _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18, primaryColor),
+                _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16, primaryColor),
+                _toolbarIconButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), primaryColor),
+                _toolbarIconButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), primaryColor),
+                _toolbarIconButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), primaryColor),
+                _toolbarIconButton(CupertinoIcons.strikethrough, () => _wrapSelection('~~', '~~'), primaryColor),
+                _toolbarIconButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), primaryColor),
+                _toolbarIconButton(CupertinoIcons.list_number, () => _insertAtCursor('\n1. '), primaryColor),
+                _toolbarIconButton(CupertinoIcons.quote_bubble, () => _wrapSelection('\n> ', '\n'), primaryColor),
+                _toolbarIconButton(CupertinoIcons.text_alignleft, () {}, primaryColor),
+                _toolbarIconButton(CupertinoIcons.text_aligncenter, () {}, primaryColor),
+                _toolbarIconButton(CupertinoIcons.text_indent_right, () {}, primaryColor),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            icon: Icon(CupertinoIcons.xmark, color: primaryColor),
             onPressed: () => setState(() => _isFormatBarExpanded = false),
           ),
         ],
@@ -1234,7 +1221,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     );
   }
 
-  Widget _textFormatButton(String label, VoidCallback onTap, double fontSize) {
+  Widget _textFormatButton(String label, VoidCallback onTap, double fontSize, Color textColor) {
     return TextButton(
       onPressed: onTap,
       style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
@@ -1243,7 +1230,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
         style: GoogleFonts.inter(
           fontWeight: FontWeight.bold,
           fontSize: fontSize,
-          color: Colors.white,
+          color: textColor,
         ),
       ),
     );
