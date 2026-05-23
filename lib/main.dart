@@ -913,6 +913,85 @@ class _NotesScreenState extends State<NotesScreen> {
 
 }
 
+class RichTextController extends TextEditingController {
+  final bool isDarkMode;
+  RichTextController({super.text, required this.isDarkMode});
+
+  @override
+  TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
+    final List<TextSpan> children = [];
+    final String text = this.text;
+
+    // Patrones simples para Markdown/Tags
+    // Negrita: **texto**
+    // Cursiva: _texto_
+    // Subrayado: <u>texto</u>
+    // Resaltado: <highlight>texto</highlight>
+    // Títulos: <h1>...</h1>, <h2>...</h2>, <h3>...</h3>
+
+    RegExp regExp = RegExp(
+      r'(\*\*.*?\*\*)|(_.*?_)|(<u>.*?</u>)|(<highlight>.*?</highlight>)|(<h1>.*?</h1>)|(<h2>.*?</h2>)|(<h3>.*?</h3>)',
+      multiLine: true,
+      dotAll: true,
+    );
+
+    int lastMatchEnd = 0;
+    for (var match in regExp.allMatches(text)) {
+      // Texto normal antes del match
+      if (match.start > lastMatchEnd) {
+        children.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
+      }
+
+      String matchText = match.group(0)!;
+      if (matchText.startsWith('**')) {
+        children.add(TextSpan(
+          text: matchText.substring(2, matchText.length - 2),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ));
+      } else if (matchText.startsWith('_')) {
+        children.add(TextSpan(
+          text: matchText.substring(1, matchText.length - 1),
+          style: const TextStyle(fontStyle: FontStyle.italic),
+        ));
+      } else if (matchText.startsWith('<u>')) {
+        children.add(TextSpan(
+          text: matchText.substring(3, matchText.length - 4),
+          style: const TextStyle(decoration: TextDecoration.underline),
+        ));
+      } else if (matchText.startsWith('<highlight>')) {
+        children.add(TextSpan(
+          text: matchText.substring(11, matchText.length - 12),
+          style: TextStyle(
+            background: Paint()..color = const Color(0xFFEBB119).withValues(alpha: 0.3),
+          ),
+        ));
+      } else if (matchText.startsWith('<h1>')) {
+        children.add(TextSpan(
+          text: matchText.substring(4, matchText.length - 5),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ));
+      } else if (matchText.startsWith('<h2>')) {
+        children.add(TextSpan(
+          text: matchText.substring(4, matchText.length - 5),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ));
+      } else if (matchText.startsWith('<h3>')) {
+        children.add(TextSpan(
+          text: matchText.substring(4, matchText.length - 5),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ));
+      }
+      lastMatchEnd = match.end;
+    }
+
+    if (lastMatchEnd < text.length) {
+      children.add(TextSpan(text: text.substring(lastMatchEnd)));
+    }
+
+    return TextSpan(style: style, children: children);
+  }
+}
+
 class EditNoteScreen extends StatefulWidget {
   final Note note;
   final bool isDarkMode;
@@ -927,9 +1006,9 @@ class EditNoteScreen extends StatefulWidget {
   State<EditNoteScreen> createState() => _EditNoteScreenState();
 }
 
-class _EditNoteScreenState extends State<EditNoteScreen> {
+class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProviderStateMixin {
   late TextEditingController titleController;
-  late TextEditingController contentController;
+  late RichTextController contentController;
   late bool isPinned;
   bool _isFormatBarExpanded = false;
   DateTime? selectedDate;
@@ -939,7 +1018,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
   void initState() {
     super.initState();
     titleController = TextEditingController(text: widget.note.title);
-    contentController = TextEditingController(text: widget.note.content);
+    contentController = RichTextController(text: widget.note.content, isDarkMode: widget.isDarkMode);
     _charCount = widget.note.content.length;
     selectedDate = widget.note.date;
     isPinned = widget.note.isPinned;
@@ -1130,25 +1209,47 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
         color: cardColor,
         border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 0.5)),
       ),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        switchInCurve: Curves.easeInOutCubic,
-        switchOutCurve: Curves.easeInOutCubic,
-        transitionBuilder: (child, animation) {
-          final isFormat = child.key == const ValueKey('format');
-          return FadeTransition(
-            opacity: animation,
-            child: RotationTransition(
-              turns: isFormat 
-                  ? Tween(begin: -0.25, end: 0.0).animate(animation)
-                  : Tween(begin: 0.0, end: 0.25).animate(animation),
-              child: child,
+      child: Row(
+        children: [
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeInOutCubic,
+              switchOutCurve: Curves.easeInOutCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.0, 0.2),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: _isFormatBarExpanded 
+                ? _buildTextFormatMode(secondaryColor, primaryColor, accentColor)
+                : _buildInitialMode(secondaryColor),
             ),
-          );
-        },
-        child: _isFormatBarExpanded 
-          ? _buildTextFormatMode(secondaryColor, primaryColor, accentColor)
-          : _buildInitialMode(secondaryColor),
+          ),
+          _buildToggleButton(primaryColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleButton(Color color) {
+    return AnimatedRotation(
+      duration: const Duration(milliseconds: 350),
+      turns: _isFormatBarExpanded ? 0.25 : 0.0,
+      curve: Curves.easeInOutBack,
+      child: IconButton(
+        icon: Icon(
+          _isFormatBarExpanded ? CupertinoIcons.xmark : CupertinoIcons.textformat,
+          color: color,
+        ),
+        onPressed: () => setState(() => _isFormatBarExpanded = !_isFormatBarExpanded),
       ),
     );
   }
@@ -1163,45 +1264,31 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
         _toolbarIconButton(CupertinoIcons.photo, () {}, color),
         _toolbarIconButton(CupertinoIcons.scribble, () {}, color),
         _toolbarIconButton(CupertinoIcons.checkmark_square, () => _insertAtCursor('\n☐ '), color),
-        _toolbarIconButton(CupertinoIcons.textformat, () => setState(() => _isFormatBarExpanded = true), color),
       ],
     );
   }
 
   Widget _buildTextFormatMode(Color secondaryColor, Color primaryColor, Color accentColor) {
-    return SizedBox(
+    return ListView(
       key: const ValueKey('format'),
-      height: 48,
-      child: Row(
-        children: [
-          Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              children: [
-                _toolbarIconButton(CupertinoIcons.pencil_outline, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor),
-                _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20, primaryColor),
-                _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18, primaryColor),
-                _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16, primaryColor),
-                _toolbarIconButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), primaryColor),
-                _toolbarIconButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), primaryColor),
-                _toolbarIconButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), primaryColor),
-                _toolbarIconButton(CupertinoIcons.strikethrough, () => _wrapSelection('~~', '~~'), primaryColor),
-                _toolbarIconButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), primaryColor),
-                _toolbarIconButton(CupertinoIcons.list_number, () => _insertAtCursor('\n1. '), primaryColor),
-                _toolbarIconButton(CupertinoIcons.quote_bubble, () => _wrapSelection('\n> ', '\n'), primaryColor),
-                _toolbarIconButton(CupertinoIcons.text_alignleft, () {}, primaryColor),
-                _toolbarIconButton(CupertinoIcons.text_aligncenter, () {}, primaryColor),
-                _toolbarIconButton(CupertinoIcons.increase_indent, () {}, primaryColor),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: Icon(CupertinoIcons.xmark, color: primaryColor),
-            onPressed: () => setState(() => _isFormatBarExpanded = false),
-          ),
-        ],
-      ),
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      children: [
+        _toolbarIconButton(CupertinoIcons.pencil_outline, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor),
+        _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20, primaryColor),
+        _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18, primaryColor),
+        _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16, primaryColor),
+        _toolbarIconButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), primaryColor),
+        _toolbarIconButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), primaryColor),
+        _toolbarIconButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), primaryColor),
+        _toolbarIconButton(CupertinoIcons.strikethrough, () => _wrapSelection('~~', '~~'), primaryColor),
+        _toolbarIconButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), primaryColor),
+        _toolbarIconButton(CupertinoIcons.list_number, () => _insertAtCursor('\n1. '), primaryColor),
+        _toolbarIconButton(CupertinoIcons.quote_bubble, () => _wrapSelection('\n> ', '\n'), primaryColor),
+        _toolbarIconButton(CupertinoIcons.text_alignleft, () {}, primaryColor),
+        _toolbarIconButton(CupertinoIcons.text_aligncenter, () {}, primaryColor),
+        _toolbarIconButton(CupertinoIcons.increase_indent, () {}, primaryColor),
+      ],
     );
   }
 
