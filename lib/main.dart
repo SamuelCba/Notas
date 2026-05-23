@@ -933,14 +933,22 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
   late bool isPinned;
   bool _isFormatBarExpanded = false;
   DateTime? selectedDate;
+  int _charCount = 0;
 
   @override
   void initState() {
     super.initState();
     titleController = TextEditingController(text: widget.note.title);
     contentController = TextEditingController(text: widget.note.content);
+    _charCount = widget.note.content.length;
     selectedDate = widget.note.date;
     isPinned = widget.note.isPinned;
+    
+    contentController.addListener(() {
+      setState(() {
+        _charCount = contentController.text.length;
+      });
+    });
   }
 
   void _insertAtCursor(String value) {
@@ -978,242 +986,266 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = widget.isDarkMode ? const Color(0xFF0D1117) : const Color(0xFFF0F2F5);
-    final cardColor = widget.isDarkMode ? const Color(0xFF161B22) : Colors.white;
-    final primaryTextColor = widget.isDarkMode ? const Color(0xFFF5F7FA) : Colors.black;
-    final secondaryTextColor = widget.isDarkMode ? const Color(0xFF9AA4B2) : Colors.grey.shade600;
+    final backgroundColor = widget.isDarkMode ? const Color(0xFF000000) : const Color(0xFFF0F2F5);
+    final cardColor = widget.isDarkMode ? const Color(0xFF121212) : Colors.white;
+    final primaryTextColor = widget.isDarkMode ? Colors.white : Colors.black;
+    final secondaryTextColor = widget.isDarkMode ? const Color(0xFF757575) : Colors.grey.shade600;
+    final accentColor = const Color(0xFFEBB119);
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: Column(
-        children: [
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(CupertinoIcons.chevron_back, color: _notesBlue, size: 28),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: Icon(
-                      isPinned ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
-                      color: isPinned ? Colors.amber[700] : secondaryTextColor,
-                      size: 22,
+    return Theme(
+      data: Theme.of(context).copyWith(
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: accentColor,
+          selectionColor: accentColor.withValues(alpha: 0.3),
+          selectionHandleColor: accentColor,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: backgroundColor,
+        body: Column(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(CupertinoIcons.chevron_back, color: _notesBlue, size: 28),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                    onPressed: () => setState(() => isPinned = !isPinned),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      final updatedNote = Note(
-                        id: widget.note.id,
-                        title: titleController.text.isEmpty ? 'Sin título' : titleController.text,
-                        content: contentController.text,
-                        date: selectedDate ?? DateTime.now(),
-                        isPinned: isPinned,
-                      );
-                      Navigator.pop(context, updatedNote);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _notesBlue,
-                        borderRadius: BorderRadius.circular(20),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(
+                        isPinned ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
+                        color: isPinned ? Colors.amber[700] : secondaryTextColor,
+                        size: 22,
                       ),
-                      child: Text(
-                        'Listo',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
+                      onPressed: () => setState(() => isPinned = !isPinned),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        final updatedNote = Note(
+                          id: widget.note.id,
+                          title: titleController.text.isEmpty ? 'Sin título' : titleController.text,
+                          content: contentController.text,
+                          date: selectedDate ?? DateTime.now(),
+                          isPinned: isPinned,
+                        );
+                        Navigator.pop(context, updatedNote);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _notesBlue,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'Listo',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                children: [
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleController,
+                    style: GoogleFonts.inter(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: primaryTextColor,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Título',
+                      hintStyle: TextStyle(color: secondaryTextColor),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  Row(
+                    children: [
+                      Text(
+                        DateFormat('d MMMM yyyy, HH:mm').format(selectedDate ?? DateTime.now()),
+                        style: GoogleFonts.inter(fontSize: 12, color: secondaryTextColor),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('|', style: TextStyle(color: secondaryTextColor)),
+                      ),
+                      Text(
+                        '$_charCount caracteres',
+                        style: GoogleFonts.inter(fontSize: 12, color: secondaryTextColor),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Stack(
+                    children: [
+                      TextField(
+                        controller: contentController,
+                        style: GoogleFonts.inter(
+                          fontSize: 17,
+                          height: 1.6,
+                          color: primaryTextColor,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Empiece a escribir',
+                          hintStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.5)),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        maxLines: null,
+                        scrollPhysics: const NeverScrollableScrollPhysics(),
+                      ),
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: _buildMindMapBadge(accentColor),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              children: [
-                const SizedBox(height: 12),
-                Text(
-                  DateFormat('d MMMM yyyy, HH:mm').format(selectedDate ?? DateTime.now()).toUpperCase(),
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: secondaryTextColor.withValues(alpha: 0.7),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: titleController,
-                  style: GoogleFonts.inter(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: primaryTextColor,
-                    letterSpacing: -0.5,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Título',
-                    hintStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.4)),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: contentController,
-                  style: GoogleFonts.inter(
-                    fontSize: 17,
-                    height: 1.6,
-                    color: primaryTextColor.withValues(alpha: 0.9),
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Empieza a escribir...',
-                    hintStyle: TextStyle(color: secondaryTextColor.withValues(alpha: 0.4)),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  maxLines: null,
-                  scrollPhysics: const NeverScrollableScrollPhysics(),
-                ),
-                const SizedBox(height: 100),
-              ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.paddingOf(context).bottom + 12),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: widget.isDarkMode ? 0.3 : 0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, -5),
-                ),
-              ],
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: animation.drive(Tween(begin: const Offset(0, 0.2), end: Offset.zero)),
-                    child: child,
-                  ),
-                );
-              },
-              child: _isFormatBarExpanded ? _buildExpandedFormatBar(secondaryTextColor) : _buildInitialFormatBar(secondaryTextColor),
-            ),
+            _buildDynamicBottomToolbar(cardColor, secondaryTextColor, primaryTextColor, accentColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMindMapBadge(Color accentColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accentColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.linear_scale_rounded, color: accentColor, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            'Crear un mapa mental',
+            style: GoogleFonts.inter(fontSize: 12, color: accentColor, fontWeight: FontWeight.w600),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInitialFormatBar(Color color) {
+  Widget _buildDynamicBottomToolbar(Color cardColor, Color secondaryColor, Color primaryColor, Color accentColor) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(8, 8, 8, MediaQuery.paddingOf(context).bottom + 8),
+      decoration: BoxDecoration(
+        color: cardColor,
+        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 0.5)),
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOutCubic,
+        child: _isFormatBarExpanded 
+          ? _buildTextFormatMode(secondaryColor, primaryColor, accentColor)
+          : _buildInitialMode(secondaryColor),
+      ),
+    );
+  }
+
+  Widget _buildInitialMode(Color color) {
     return Row(
       key: const ValueKey('initial'),
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildFormatButton(CupertinoIcons.textformat, () => setState(() => _isFormatBarExpanded = true), color, label: 'T'),
-        _buildFormatButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), color),
-        _buildFormatButton(CupertinoIcons.checkmark_square, () => _insertAtCursor('\n☐ '), color),
-        _buildFormatButton(CupertinoIcons.camera, () => _insertAtCursor('\n[imagen] '), color),
+        _toolbarIconButton(Icons.auto_awesome_outlined, () {}, color, isAi: true),
+        _toolbarIconButton(Icons.keyboard_voice_rounded, () {}, color),
+        _toolbarIconButton(Icons.image_outlined, () {}, color),
+        _toolbarIconButton(Icons.gesture_rounded, () {}, color),
+        _toolbarIconButton(Icons.check_box_outlined, () => _insertAtCursor('\n☐ '), color),
+        _toolbarIconButton(Icons.title_rounded, () => setState(() => _isFormatBarExpanded = true), color),
       ],
     );
   }
 
-  Widget _buildExpandedFormatBar(Color color) {
-    return Row(
-      key: const ValueKey('expanded'),
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        IconButton(
-          icon: Icon(CupertinoIcons.chevron_left, color: color, size: 20),
-          onPressed: () => setState(() => _isFormatBarExpanded = false),
-        ),
-        _buildFormatButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), color),
-        _buildFormatButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), color),
-        _buildFormatButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), color),
-        _buildFormatButton(CupertinoIcons.textformat_size, () => _showFontPicker(), color),
-      ],
-    );
-  }
-
-  void _showFontPicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: widget.isDarkMode ? const Color(0xFF161B22) : Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Seleccionar Fuente',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: widget.isDarkMode ? Colors.white : Colors.black,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _fontTile('Inter', 'inter'),
-              _fontTile('Roboto', 'roboto'),
-              _fontTile('Lora', 'lora'),
-              _fontTile('Poppins', 'poppins'),
-              const SizedBox(height: 20),
-            ],
+  Widget _buildTextFormatMode(Color secondaryColor, Color primaryColor, Color accentColor) {
+    return SizedBox(
+      key: const ValueKey('format'),
+      height: 48,
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              children: [
+                _toolbarIconButton(Icons.border_color_rounded, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor),
+                _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20),
+                _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18),
+                _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16),
+                _toolbarIconButton(Icons.format_bold_rounded, () => _wrapSelection('**', '**'), primaryColor),
+                _toolbarIconButton(Icons.format_italic_rounded, () => _wrapSelection('_', '_'), primaryColor),
+                _toolbarIconButton(Icons.format_underlined_rounded, () => _wrapSelection('<u>', '</u>'), primaryColor),
+                _toolbarIconButton(Icons.strikethrough_s_rounded, () => _wrapSelection('~~', '~~'), primaryColor),
+                _toolbarIconButton(Icons.format_list_bulleted_rounded, () => _insertAtCursor('\n• '), primaryColor),
+                _toolbarIconButton(Icons.format_list_numbered_rounded, () => _insertAtCursor('\n1. '), primaryColor),
+                _toolbarIconButton(Icons.format_quote_rounded, () => _wrapSelection('\n> ', '\n'), primaryColor),
+                _toolbarIconButton(Icons.format_align_left_rounded, () {}, primaryColor),
+                _toolbarIconButton(Icons.format_align_center_rounded, () {}, primaryColor),
+                _toolbarIconButton(Icons.format_indent_increase_rounded, () {}, primaryColor),
+              ],
+            ),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _fontTile(String name, String tag) {
-    return ListTile(
-      title: Text(name, style: GoogleFonts.getFont(name)),
-      onTap: () {
-        _wrapSelection('<font=$tag>', '</font>');
-        Navigator.pop(context);
-      },
-    );
-  }
-
-  Widget _buildFormatButton(IconData icon, VoidCallback onTap, Color color, {String? label}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: label != null
-            ? Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-              )
-            : Icon(icon, size: 22, color: color),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            onPressed: () => setState(() => _isFormatBarExpanded = false),
+          ),
+        ],
       ),
     );
   }
+
+  Widget _toolbarIconButton(IconData icon, VoidCallback onTap, Color color, {bool isAi = false}) {
+    return IconButton(
+      icon: isAi 
+        ? ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              colors: [Colors.purple, Colors.blue, Colors.orange],
+            ).createShader(bounds),
+            child: Icon(icon, color: Colors.white),
+          )
+        : Icon(icon, color: color),
+      onPressed: onTap,
+    );
+  }
+
+  Widget _textFormatButton(String label, VoidCallback onTap, double fontSize) {
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontWeight: FontWeight.bold,
+          fontSize: fontSize,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+}
 }
