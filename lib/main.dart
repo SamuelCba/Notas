@@ -605,10 +605,6 @@ class _NotesScreenState extends State<NotesScreen> {
                   }
                 },
                 searchIconColor: _notesBlue,
-                textStyle: GoogleFonts.inter(
-                  color: widget.isDarkMode ? Colors.white : Colors.black,
-                  fontSize: 16,
-                ),
                 textInputAction: TextInputAction.search,
                 collapsedLogoBuilder: (context) {
                   final tab = _tabs[_currentIndex];
@@ -1139,11 +1135,13 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
         switchInCurve: Curves.easeInOutCubic,
         switchOutCurve: Curves.easeInOutCubic,
         transitionBuilder: (child, animation) {
-          final rotate = Tween(begin: 0.0, end: 0.5).animate(animation);
+          final isFormat = child.key == const ValueKey('format');
           return FadeTransition(
             opacity: animation,
             child: RotationTransition(
-              turns: child.key == const ValueKey('format') ? rotate : const AlwaysStoppedAnimation(0),
+              turns: isFormat 
+                  ? Tween(begin: -0.25, end: 0.0).animate(animation)
+                  : Tween(begin: 0.0, end: 0.25).animate(animation),
               child: child,
             ),
           );
@@ -1194,7 +1192,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
                 _toolbarIconButton(CupertinoIcons.quote_bubble, () => _wrapSelection('\n> ', '\n'), primaryColor),
                 _toolbarIconButton(CupertinoIcons.text_alignleft, () {}, primaryColor),
                 _toolbarIconButton(CupertinoIcons.text_aligncenter, () {}, primaryColor),
-                _toolbarIconButton(CupertinoIcons.text_indent_right, () {}, primaryColor),
+                _toolbarIconButton(CupertinoIcons.increase_indent, () {}, primaryColor),
               ],
             ),
           ),
