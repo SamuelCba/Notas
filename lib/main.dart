@@ -917,70 +917,72 @@ class RichTextController extends TextEditingController {
   final bool isDarkMode;
   RichTextController({super.text, required this.isDarkMode});
 
+  // Retorna solo el texto "limpio" sin etiquetas para el contador
+  String get visibleText {
+    return text.replaceAll(RegExp(r'<[^>]*>|\*\*|~~|_'), '');
+  }
+
+  // Verifica si el cursor está dentro de un tipo de etiqueta
+  bool isStyleActive(String pattern) {
+    if (!selection.isValid) return false;
+    final String currentText = text;
+    final int cursor = selection.baseOffset;
+    
+    // Búsqueda simple: ¿hay una etiqueta de apertura antes y una de cierre después?
+    // Esto es una simplificación, pero sirve para feedback visual
+    int openIdx = currentText.lastIndexOf(pattern.split('|')[0], cursor);
+    int closeIdx = currentText.indexOf(pattern.split('|')[1], cursor);
+    
+    return openIdx != -1 && closeIdx != -1 && openIdx < closeIdx;
+  }
+
   @override
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
     final List<TextSpan> children = [];
     final String text = this.text;
-
-    // Patrones simples para Markdown/Tags
-    // Negrita: **texto**
-    // Cursiva: _texto_
-    // Subrayado: <u>texto</u>
-    // Resaltado: <highlight>texto</highlight>
-    // Títulos: <h1>...</h1>, <h2>...</h2>, <h3>...</h3>
+    final Color tagColor = isDarkMode ? Colors.white24 : Colors.black26;
 
     RegExp regExp = RegExp(
-      r'(\*\*.*?\*\*)|(_.*?_)|(<u>.*?</u>)|(<highlight>.*?</highlight>)|(<h1>.*?</h1>)|(<h2>.*?</h2>)|(<h3>.*?</h3>)',
+      r'(\*\*.*?\*\*)|(_.*?_)|(<u>.*?</u>)|(<highlight>.*?</highlight>)|(<h1>.*?</h1>)|(<h2>.*?</h2>)|(<h3>.*?</h3>)|(~~.*?~~)',
       multiLine: true,
       dotAll: true,
     );
 
     int lastMatchEnd = 0;
     for (var match in regExp.allMatches(text)) {
-      // Texto normal antes del match
       if (match.start > lastMatchEnd) {
         children.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
       }
 
       String matchText = match.group(0)!;
+      
+      // Función para añadir con tags ocultos/grises
+      void addStyled(String full, String startTag, String endTag, TextStyle style) {
+        children.add(TextSpan(text: startTag, style: TextStyle(color: tagColor, fontSize: 10)));
+        children.add(TextSpan(text: full.substring(startTag.length, full.length - endTag.length), style: style));
+        children.add(TextSpan(text: endTag, style: TextStyle(color: tagColor, fontSize: 10)));
+      }
+
       if (matchText.startsWith('**')) {
-        children.add(TextSpan(
-          text: matchText.substring(2, matchText.length - 2),
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ));
+        addStyled(matchText, '**', '**', const TextStyle(fontWeight: FontWeight.bold));
       } else if (matchText.startsWith('_')) {
-        children.add(TextSpan(
-          text: matchText.substring(1, matchText.length - 1),
-          style: const TextStyle(fontStyle: FontStyle.italic),
-        ));
+        addStyled(matchText, '_', '_', const TextStyle(fontStyle: FontStyle.italic));
       } else if (matchText.startsWith('<u>')) {
-        children.add(TextSpan(
-          text: matchText.substring(3, matchText.length - 4),
-          style: const TextStyle(decoration: TextDecoration.underline),
-        ));
+        addStyled(matchText, '<u>', '</u>', const TextStyle(decoration: TextDecoration.underline));
       } else if (matchText.startsWith('<highlight>')) {
-        children.add(TextSpan(
-          text: matchText.substring(11, matchText.length - 12),
-          style: TextStyle(
-            background: Paint()..color = const Color(0xFFEBB119).withValues(alpha: 0.3),
-          ),
+        addStyled(matchText, '<highlight>', '</highlight>', TextStyle(
+          background: Paint()..color = const Color(0xFFEBB119).withValues(alpha: 0.3),
         ));
       } else if (matchText.startsWith('<h1>')) {
-        children.add(TextSpan(
-          text: matchText.substring(4, matchText.length - 5),
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ));
+        addStyled(matchText, '<h1>', '</h1>', const TextStyle(fontSize: 24, fontWeight: FontWeight.bold));
       } else if (matchText.startsWith('<h2>')) {
-        children.add(TextSpan(
-          text: matchText.substring(4, matchText.length - 5),
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ));
+        addStyled(matchText, '<h2>', '</h2>', const TextStyle(fontSize: 20, fontWeight: FontWeight.bold));
       } else if (matchText.startsWith('<h3>')) {
-        children.add(TextSpan(
-          text: matchText.substring(4, matchText.length - 5),
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ));
+        addStyled(matchText, '<h3>', '</h3>', const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
+      } else if (matchText.startsWith('~~')) {
+        addStyled(matchText, '~~', '~~', const TextStyle(decoration: TextDecoration.lineThrough));
       }
+      
       lastMatchEnd = match.end;
     }
 
@@ -1025,7 +1027,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
     
     contentController.addListener(() {
       setState(() {
-        _charCount = contentController.text.length;
+        _charCount = contentController.visibleText.length;
       });
     });
   }
@@ -1282,14 +1284,14 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         children: [
-          _toolbarIconButton(CupertinoIcons.pencil_outline, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor),
-          _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20, primaryColor),
-          _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18, primaryColor),
-          _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16, primaryColor),
-          _toolbarIconButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), primaryColor),
-          _toolbarIconButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), primaryColor),
-          _toolbarIconButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), primaryColor),
-          _toolbarIconButton(CupertinoIcons.strikethrough, () => _wrapSelection('~~', '~~'), primaryColor),
+          _toolbarIconButton(CupertinoIcons.pencil_outline, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor, isActive: contentController.isStyleActive('<highlight>|</highlight>')),
+          _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20, primaryColor, isActive: contentController.isStyleActive('<h1>|</h1>')),
+          _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18, primaryColor, isActive: contentController.isStyleActive('<h2>|</h2>')),
+          _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16, primaryColor, isActive: contentController.isStyleActive('<h3>|</h3>')),
+          _toolbarIconButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), primaryColor, isActive: contentController.isStyleActive('**|**')),
+          _toolbarIconButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), primaryColor, isActive: contentController.isStyleActive('_|_')),
+          _toolbarIconButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), primaryColor, isActive: contentController.isStyleActive('<u>|</u>')),
+          _toolbarIconButton(CupertinoIcons.strikethrough, () => _wrapSelection('~~', '~~'), primaryColor, isActive: contentController.isStyleActive('~~|~~')),
           _toolbarIconButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), primaryColor),
           _toolbarIconButton(CupertinoIcons.list_number, () => _insertAtCursor('\n1. '), primaryColor),
           _toolbarIconButton(CupertinoIcons.quote_bubble, () => _wrapSelection('\n> ', '\n'), primaryColor),
@@ -1301,7 +1303,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
     );
   }
 
-  Widget _toolbarIconButton(IconData icon, VoidCallback onTap, Color color, {bool isAi = false}) {
+  Widget _toolbarIconButton(IconData icon, VoidCallback onTap, Color color, {bool isAi = false, bool isActive = false}) {
     return IconButton(
       icon: isAi 
         ? ShaderMask(
@@ -1310,12 +1312,12 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
             ).createShader(bounds),
             child: Icon(icon, color: Colors.white),
           )
-        : Icon(icon, color: color),
+        : Icon(icon, color: isActive ? _notesBlue : color),
       onPressed: onTap,
     );
   }
 
-  Widget _textFormatButton(String label, VoidCallback onTap, double fontSize, Color textColor) {
+  Widget _textFormatButton(String label, VoidCallback onTap, double fontSize, Color textColor, {bool isActive = false}) {
     return TextButton(
       onPressed: onTap,
       style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
@@ -1324,7 +1326,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
         style: GoogleFonts.inter(
           fontWeight: FontWeight.bold,
           fontSize: fontSize,
-          color: textColor,
+          color: isActive ? _notesBlue : textColor,
         ),
       ),
     );
