@@ -1245,10 +1245,16 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
       turns: _isFormatBarExpanded ? 0.25 : 0.0,
       curve: Curves.easeInOutBack,
       child: IconButton(
-        icon: Icon(
-          _isFormatBarExpanded ? CupertinoIcons.xmark : CupertinoIcons.textformat,
-          color: color,
-        ),
+        icon: _isFormatBarExpanded 
+          ? Icon(CupertinoIcons.xmark, color: color)
+          : Text(
+              'T',
+              style: GoogleFonts.inter(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
         onPressed: () => setState(() => _isFormatBarExpanded = !_isFormatBarExpanded),
       ),
     );
@@ -1269,26 +1275,29 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
   }
 
   Widget _buildTextFormatMode(Color secondaryColor, Color primaryColor, Color accentColor) {
-    return ListView(
+    return SizedBox(
       key: const ValueKey('format'),
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      children: [
-        _toolbarIconButton(CupertinoIcons.pencil_outline, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor),
-        _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20, primaryColor),
-        _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18, primaryColor),
-        _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16, primaryColor),
-        _toolbarIconButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), primaryColor),
-        _toolbarIconButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), primaryColor),
-        _toolbarIconButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), primaryColor),
-        _toolbarIconButton(CupertinoIcons.strikethrough, () => _wrapSelection('~~', '~~'), primaryColor),
-        _toolbarIconButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), primaryColor),
-        _toolbarIconButton(CupertinoIcons.list_number, () => _insertAtCursor('\n1. '), primaryColor),
-        _toolbarIconButton(CupertinoIcons.quote_bubble, () => _wrapSelection('\n> ', '\n'), primaryColor),
-        _toolbarIconButton(CupertinoIcons.text_alignleft, () {}, primaryColor),
-        _toolbarIconButton(CupertinoIcons.text_aligncenter, () {}, primaryColor),
-        _toolbarIconButton(CupertinoIcons.increase_indent, () {}, primaryColor),
-      ],
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          _toolbarIconButton(CupertinoIcons.pencil_outline, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor),
+          _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20, primaryColor),
+          _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18, primaryColor),
+          _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16, primaryColor),
+          _toolbarIconButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), primaryColor),
+          _toolbarIconButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), primaryColor),
+          _toolbarIconButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), primaryColor),
+          _toolbarIconButton(CupertinoIcons.strikethrough, () => _wrapSelection('~~', '~~'), primaryColor),
+          _toolbarIconButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), primaryColor),
+          _toolbarIconButton(CupertinoIcons.list_number, () => _insertAtCursor('\n1. '), primaryColor),
+          _toolbarIconButton(CupertinoIcons.quote_bubble, () => _wrapSelection('\n> ', '\n'), primaryColor),
+          _toolbarIconButton(CupertinoIcons.text_alignleft, () {}, primaryColor),
+          _toolbarIconButton(CupertinoIcons.text_aligncenter, () {}, primaryColor),
+          _toolbarIconButton(CupertinoIcons.increase_indent, () {}, primaryColor),
+        ],
+      ),
     );
   }
 
