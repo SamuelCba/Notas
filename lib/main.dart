@@ -1159,7 +1159,8 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
       ),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOutCubic,
+        switchInCurve: Curves.easeInOutCubic,
+        switchOutCurve: Curves.easeInOutCubic,
         child: _isFormatBarExpanded 
           ? _buildTextFormatMode(secondaryColor, primaryColor, accentColor)
           : _buildInitialMode(secondaryColor),
@@ -1247,5 +1248,4 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
       ),
     );
   }
-}
 }
