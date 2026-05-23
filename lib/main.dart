@@ -940,7 +940,13 @@ class RichTextController extends TextEditingController {
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
     final List<TextSpan> children = [];
     final String text = this.text;
-    final Color tagColor = isDarkMode ? Colors.white24 : Colors.black26;
+    
+    // Estilo para ocultar los tags
+    const TextStyle hiddenStyle = TextStyle(
+      color: Colors.transparent,
+      fontSize: 0.01,
+      letterSpacing: -1,
+    );
 
     RegExp regExp = RegExp(
       r'(\*\*.*?\*\*)|(_.*?_)|(<u>.*?</u>)|(<highlight>.*?</highlight>)|(<h1>.*?</h1>)|(<h2>.*?</h2>)|(<h3>.*?</h3>)|(~~.*?~~)',
@@ -956,11 +962,10 @@ class RichTextController extends TextEditingController {
 
       String matchText = match.group(0)!;
       
-      // Función para añadir con tags ocultos/grises
-      void addStyled(String full, String startTag, String endTag, TextStyle style) {
-        children.add(TextSpan(text: startTag, style: TextStyle(color: tagColor, fontSize: 10)));
-        children.add(TextSpan(text: full.substring(startTag.length, full.length - endTag.length), style: style));
-        children.add(TextSpan(text: endTag, style: TextStyle(color: tagColor, fontSize: 10)));
+      void addStyled(String full, String startTag, String endTag, TextStyle innerStyle) {
+        children.add(TextSpan(text: startTag, style: hiddenStyle));
+        children.add(TextSpan(text: full.substring(startTag.length, full.length - endTag.length), style: innerStyle));
+        children.add(TextSpan(text: endTag, style: hiddenStyle));
       }
 
       if (matchText.startsWith('**')) {
