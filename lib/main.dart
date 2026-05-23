@@ -990,7 +990,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     final cardColor = widget.isDarkMode ? const Color(0xFF121212) : Colors.white;
     final primaryTextColor = widget.isDarkMode ? Colors.white : Colors.black;
     final secondaryTextColor = widget.isDarkMode ? const Color(0xFF757575) : Colors.grey.shade600;
-    final accentColor = const Color(0xFFEBB119);
+    const accentColor = Color(0xFFEBB119);
 
     return Theme(
       data: Theme.of(context).copyWith(
