@@ -946,7 +946,7 @@ class NoteFormatter {
   }) {
     final children = <TextSpan>[];
     final lines = normalizeLegacySyntax(text).split('\n');
-    final hiddenStyle = TextStyle(
+    const hiddenStyle = TextStyle(
       color: Colors.transparent,
       fontSize: 0.01,
       height: 0.01,
