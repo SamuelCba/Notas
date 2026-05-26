@@ -688,13 +688,16 @@ class _NotesScreenState extends State<NotesScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              note.content.isEmpty ? 'Sin contenido' : note.content,
-	              style: GoogleFonts.inter(
-	                fontSize: 14,
-	                color: _secondaryTextColor,
-	                height: 1.4,
-	              ),
+            RichText(
+              text: NoteFormatter.buildTextSpan(
+                text: note.content.isEmpty ? 'Sin contenido' : note.content,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: _secondaryTextColor,
+                  height: 1.4,
+                ),
+                isDarkMode: widget.isDarkMode,
+              ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
@@ -913,14 +916,149 @@ class _NotesScreenState extends State<NotesScreen> {
 
 }
 
+class NoteFormatter {
+  static final RegExp _headingPrefix = RegExp(r'^(#{1,3})\s+');
+  static final RegExp _listPrefix = RegExp(r'^(?:[•☐☑]\s+|\d+\.\s+)');
+  static final RegExp _inlineToken = RegExp(
+    r'(\*\*[^*\n]+?\*\*)|(_[^_\n]+?_)|(<u>.+?</u>)|(<highlight>.+?</highlight>)|(~~[^~\n]+?~~)',
+  );
+
+  static String cleanText(String raw) {
+    final cleanLines = normalizeLegacySyntax(raw).split('\n').map((line) {
+      return line
+          .replaceFirst(_headingPrefix, '')
+          .replaceFirst(_listPrefix, '');
+    }).join('\n');
+
+    return cleanLines
+        .replaceAllMapped(RegExp(r'\*\*([^*\n]+?)\*\*'), (match) => match.group(1)!)
+        .replaceAllMapped(RegExp(r'_([^_\n]+?)_'), (match) => match.group(1)!)
+        .replaceAllMapped(RegExp(r'<u>(.*?)</u>'), (match) => match.group(1)!)
+        .replaceAllMapped(RegExp(r'<highlight>(.*?)</highlight>'), (match) => match.group(1)!)
+        .replaceAllMapped(RegExp(r'~~([^~\n]+?)~~'), (match) => match.group(1)!);
+  }
+
+  static TextSpan buildTextSpan({
+    required String text,
+    TextStyle? style,
+    required bool isDarkMode,
+    bool hideSyntax = false,
+  }) {
+    final children = <TextSpan>[];
+    final lines = normalizeLegacySyntax(text).split('\n');
+    final hiddenStyle = TextStyle(
+      color: Colors.transparent,
+      fontSize: 0.01,
+      height: 0.01,
+      decoration: TextDecoration.none,
+    );
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final heading = _headingPrefix.firstMatch(line);
+      final prefix = heading?.group(0) ?? '';
+      final body = heading == null ? line : line.substring(prefix.length);
+      final lineStyle = _styleForHeading(heading?.group(1)?.length, style);
+
+      if (hideSyntax && prefix.isNotEmpty) {
+        children.add(TextSpan(text: prefix, style: hiddenStyle));
+      }
+      children.addAll(_buildInlineSpans(
+        body,
+        lineStyle,
+        hiddenStyle,
+        isDarkMode,
+        hideSyntax,
+      ));
+      if (i < lines.length - 1) {
+        children.add(TextSpan(text: '\n', style: style));
+      }
+    }
+
+    return TextSpan(style: style, children: children);
+  }
+
+  static String normalizeLegacySyntax(String raw) {
+    return raw.replaceAllMapped(
+      RegExp(r'<h([123])>(.*?)</h\1>', dotAll: true),
+      (match) => '${List.filled(int.parse(match.group(1)!), '#').join()} ${match.group(2)!}',
+    );
+  }
+
+  static TextStyle? _styleForHeading(int? level, TextStyle? baseStyle) {
+    if (level == null) return baseStyle;
+    final headingStyle = switch (level) {
+      1 => const TextStyle(fontSize: 28, height: 1.2, fontWeight: FontWeight.w800),
+      2 => const TextStyle(fontSize: 23, height: 1.25, fontWeight: FontWeight.w800),
+      _ => const TextStyle(fontSize: 19, height: 1.35, fontWeight: FontWeight.w700),
+    };
+    return baseStyle?.merge(headingStyle) ?? headingStyle;
+  }
+
+  static List<TextSpan> _buildInlineSpans(
+    String line,
+    TextStyle? baseStyle,
+    TextStyle hiddenStyle,
+    bool isDarkMode,
+    bool hideSyntax,
+  ) {
+    final spans = <TextSpan>[];
+    var lastEnd = 0;
+
+    for (final match in _inlineToken.allMatches(line)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: line.substring(lastEnd, match.start), style: baseStyle));
+      }
+
+      final token = match.group(0)!;
+      late final String open;
+      late final String close;
+      late final TextStyle tokenStyle;
+
+      if (token.startsWith('**')) {
+        open = '**';
+        close = '**';
+        tokenStyle = const TextStyle(fontWeight: FontWeight.w800);
+      } else if (token.startsWith('_')) {
+        open = '_';
+        close = '_';
+        tokenStyle = const TextStyle(fontStyle: FontStyle.italic);
+      } else if (token.startsWith('<u>')) {
+        open = '<u>';
+        close = '</u>';
+        tokenStyle = const TextStyle(decoration: TextDecoration.underline);
+      } else if (token.startsWith('<highlight>')) {
+        open = '<highlight>';
+        close = '</highlight>';
+        tokenStyle = TextStyle(
+          backgroundColor: const Color(0xFFEBB119).withValues(alpha: isDarkMode ? 0.34 : 0.28),
+        );
+      } else {
+        open = '~~';
+        close = '~~';
+        tokenStyle = const TextStyle(decoration: TextDecoration.lineThrough);
+      }
+
+      final inner = token.substring(open.length, token.length - close.length);
+      if (hideSyntax) spans.add(TextSpan(text: open, style: hiddenStyle));
+      spans.add(TextSpan(text: inner, style: baseStyle?.merge(tokenStyle) ?? tokenStyle));
+      if (hideSyntax) spans.add(TextSpan(text: close, style: hiddenStyle));
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < line.length) {
+      spans.add(TextSpan(text: line.substring(lastEnd), style: baseStyle));
+    }
+
+    return spans;
+  }
+}
+
 class RichTextController extends TextEditingController {
   final bool isDarkMode;
   RichTextController({super.text, required this.isDarkMode});
 
-  // Retorna solo el texto "limpio" sin etiquetas para el contador
-  String get visibleText {
-    return text.replaceAll(RegExp(r'<[^>]*>|\*\*|~~|_'), '');
-  }
+  String get visibleText => NoteFormatter.cleanText(text);
 
   // Verifica si el cursor está dentro de un tipo de etiqueta
   bool isStyleActive(String pattern) {
@@ -938,64 +1076,12 @@ class RichTextController extends TextEditingController {
 
   @override
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
-    final List<TextSpan> children = [];
-    final String text = this.text;
-    
-    // Estilo para ocultar los tags
-    const TextStyle hiddenStyle = TextStyle(
-      color: Colors.transparent,
-      fontSize: 0.01,
-      letterSpacing: -1,
+    return NoteFormatter.buildTextSpan(
+      text: text,
+      style: style,
+      isDarkMode: isDarkMode,
+      hideSyntax: true,
     );
-
-    RegExp regExp = RegExp(
-      r'(\*\*.*?\*\*)|(_.*?_)|(<u>.*?</u>)|(<highlight>.*?</highlight>)|(<h1>.*?</h1>)|(<h2>.*?</h2>)|(<h3>.*?</h3>)|(~~.*?~~)',
-      multiLine: true,
-      dotAll: true,
-    );
-
-    int lastMatchEnd = 0;
-    for (var match in regExp.allMatches(text)) {
-      if (match.start > lastMatchEnd) {
-        children.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
-      }
-
-      String matchText = match.group(0)!;
-      
-      void addStyled(String full, String startTag, String endTag, TextStyle innerStyle) {
-        children.add(TextSpan(text: startTag, style: hiddenStyle));
-        children.add(TextSpan(text: full.substring(startTag.length, full.length - endTag.length), style: innerStyle));
-        children.add(TextSpan(text: endTag, style: hiddenStyle));
-      }
-
-      if (matchText.startsWith('**')) {
-        addStyled(matchText, '**', '**', const TextStyle(fontWeight: FontWeight.bold));
-      } else if (matchText.startsWith('_')) {
-        addStyled(matchText, '_', '_', const TextStyle(fontStyle: FontStyle.italic));
-      } else if (matchText.startsWith('<u>')) {
-        addStyled(matchText, '<u>', '</u>', const TextStyle(decoration: TextDecoration.underline));
-      } else if (matchText.startsWith('<highlight>')) {
-        addStyled(matchText, '<highlight>', '</highlight>', TextStyle(
-          background: Paint()..color = const Color(0xFFEBB119).withValues(alpha: 0.3),
-        ));
-      } else if (matchText.startsWith('<h1>')) {
-        addStyled(matchText, '<h1>', '</h1>', const TextStyle(fontSize: 24, fontWeight: FontWeight.bold));
-      } else if (matchText.startsWith('<h2>')) {
-        addStyled(matchText, '<h2>', '</h2>', const TextStyle(fontSize: 20, fontWeight: FontWeight.bold));
-      } else if (matchText.startsWith('<h3>')) {
-        addStyled(matchText, '<h3>', '</h3>', const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
-      } else if (matchText.startsWith('~~')) {
-        addStyled(matchText, '~~', '~~', const TextStyle(decoration: TextDecoration.lineThrough));
-      }
-      
-      lastMatchEnd = match.end;
-    }
-
-    if (lastMatchEnd < text.length) {
-      children.add(TextSpan(text: text.substring(lastMatchEnd)));
-    }
-
-    return TextSpan(style: style, children: children);
   }
 }
 
@@ -1018,6 +1104,8 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
   late RichTextController contentController;
   late bool isPinned;
   bool _isFormatBarExpanded = false;
+  bool _isApplyingAutoFormat = false;
+  String _lastEditedText = '';
   DateTime? selectedDate;
   int _charCount = 0;
 
@@ -1026,7 +1114,8 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
     super.initState();
     titleController = TextEditingController(text: widget.note.title);
     contentController = RichTextController(text: widget.note.content, isDarkMode: widget.isDarkMode);
-    _charCount = widget.note.content.length;
+    _lastEditedText = widget.note.content;
+    _charCount = contentController.visibleText.length;
     selectedDate = widget.note.date;
     isPinned = widget.note.isPinned;
     
@@ -1047,6 +1136,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
       text: next,
       selection: TextSelection.collapsed(offset: start + value.length),
     );
+    _lastEditedText = next;
   }
 
   void _wrapSelection(String before, String after) {
@@ -1057,9 +1147,25 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
       contentController.selection = TextSelection.collapsed(
         offset: contentController.selection.baseOffset - after.length,
       );
+      _lastEditedText = contentController.text;
       return;
     }
+
     final selected = text.substring(selection.start, selection.end);
+    if (selected.startsWith(before) && selected.endsWith(after)) {
+      final inner = selected.substring(before.length, selected.length - after.length);
+      final next = text.replaceRange(selection.start, selection.end, inner);
+      contentController.value = TextEditingValue(
+        text: next,
+        selection: TextSelection(
+          baseOffset: selection.start,
+          extentOffset: selection.start + inner.length,
+        ),
+      );
+      _lastEditedText = next;
+      return;
+    }
+
     final next = text.replaceRange(selection.start, selection.end, '$before$selected$after');
     contentController.value = TextEditingValue(
       text: next,
@@ -1068,6 +1174,163 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
         extentOffset: selection.end + before.length,
       ),
     );
+    _lastEditedText = next;
+  }
+
+  ({int start, int end}) _selectedLineRange() {
+    final text = contentController.text;
+    final selection = contentController.selection;
+    final rawStart = selection.isValid ? selection.start : text.length;
+    final rawEnd = selection.isValid ? selection.end : text.length;
+    final start = rawStart.clamp(0, text.length).toInt();
+    final end = rawEnd.clamp(0, text.length).toInt();
+    final lineStart = text.lastIndexOf('\n', start == 0 ? 0 : start - 1) + 1;
+    var lineEnd = text.indexOf('\n', end);
+    if (lineEnd == -1) lineEnd = text.length;
+    return (start: lineStart, end: lineEnd);
+  }
+
+  void _replaceSelectedLines(String Function(List<String> lines) transform) {
+    final text = contentController.text;
+    final range = _selectedLineRange();
+    final block = text.substring(range.start, range.end);
+    final nextBlock = transform(block.split('\n'));
+    final next = text.replaceRange(range.start, range.end, nextBlock);
+
+    contentController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: range.start + nextBlock.length),
+    );
+    _lastEditedText = next;
+  }
+
+  void _applyParagraphStyle(int level) {
+    final marker = '${List.filled(level, '#').join()} ';
+    _replaceSelectedLines((lines) {
+      final activeLines = lines.where((line) => line.trim().isNotEmpty);
+      final allActive = activeLines.isNotEmpty &&
+          activeLines.every((line) => line.startsWith(marker));
+
+      return lines.map((line) {
+        final body = line.replaceFirst(RegExp(r'^#{1,3}\s+'), '');
+        if (allActive) return body;
+        return '$marker$body';
+      }).join('\n');
+    });
+  }
+
+  void _toggleLinePrefix(String prefix) {
+    _replaceSelectedLines((lines) {
+      final activeLines = lines.where((line) => line.trim().isNotEmpty);
+      final allActive = activeLines.isNotEmpty &&
+          activeLines.every((line) => line.startsWith(prefix));
+
+      return lines.map((line) {
+        final body = line
+            .replaceFirst(RegExp(r'^#{1,3}\s+'), '')
+            .replaceFirst(RegExp(r'^(?:[•☐☑]\s+|\d+\.\s+)'), '');
+        if (allActive) return body;
+        return '$prefix$body';
+      }).join('\n');
+    });
+  }
+
+  void _toggleNumberedList() {
+    _replaceSelectedLines((lines) {
+      final activeLines = lines.where((line) => line.trim().isNotEmpty);
+      final allActive = activeLines.isNotEmpty &&
+          activeLines.every((line) => RegExp(r'^\d+\.\s+').hasMatch(line));
+      var index = 1;
+
+      return lines.map((line) {
+        final body = line
+            .replaceFirst(RegExp(r'^#{1,3}\s+'), '')
+            .replaceFirst(RegExp(r'^(?:[•☐☑]\s+|\d+\.\s+)'), '');
+        if (allActive) return body;
+        return '${index++}. $body';
+      }).join('\n');
+    });
+  }
+
+  bool _isParagraphStyleActive(int level) {
+    final text = contentController.text;
+    final selection = contentController.selection;
+    if (!selection.isValid) return false;
+    final cursor = selection.baseOffset.clamp(0, text.length).toInt();
+    final lineStart = text.lastIndexOf('\n', cursor == 0 ? 0 : cursor - 1) + 1;
+    return text.substring(lineStart).startsWith('${List.filled(level, '#').join()} ');
+  }
+
+  bool _isLinePrefixActive(Pattern prefix) {
+    final text = contentController.text;
+    final selection = contentController.selection;
+    if (!selection.isValid) return false;
+    final cursor = selection.baseOffset.clamp(0, text.length).toInt();
+    final lineStart = text.lastIndexOf('\n', cursor == 0 ? 0 : cursor - 1) + 1;
+    final line = text.substring(lineStart);
+    if (prefix is RegExp) return prefix.hasMatch(line);
+    return line.startsWith(prefix.toString());
+  }
+
+  void _handleBodyChanged(String value) {
+    if (_isApplyingAutoFormat) {
+      _lastEditedText = value;
+      return;
+    }
+
+    final selection = contentController.selection;
+    final cursor = selection.isValid ? selection.baseOffset : -1;
+    final insertedReturn = value.length == _lastEditedText.length + 1 &&
+        cursor > 0 &&
+        value[cursor - 1] == '\n';
+
+    if (!insertedReturn) {
+      _lastEditedText = value;
+      return;
+    }
+
+    final previousLineEnd = cursor - 1;
+    final previousLineStart = previousLineEnd <= 0
+        ? 0
+        : value.lastIndexOf('\n', previousLineEnd - 1) + 1;
+    final previousLine = value.substring(previousLineStart, previousLineEnd);
+    final marker = _continuationMarker(previousLine);
+    if (marker == null) {
+      _lastEditedText = value;
+      return;
+    }
+
+    final body = previousLine.substring(marker.length);
+    _isApplyingAutoFormat = true;
+    if (body.trim().isEmpty) {
+      final next = value.replaceRange(previousLineStart, previousLineEnd, '');
+      contentController.value = TextEditingValue(
+        text: next,
+        selection: TextSelection.collapsed(offset: previousLineStart),
+      );
+      _lastEditedText = next;
+    } else {
+      final nextMarker = _nextContinuationMarker(marker);
+      final next = value.replaceRange(cursor, cursor, nextMarker);
+      contentController.value = TextEditingValue(
+        text: next,
+        selection: TextSelection.collapsed(offset: cursor + nextMarker.length),
+      );
+      _lastEditedText = next;
+    }
+    _isApplyingAutoFormat = false;
+  }
+
+  String? _continuationMarker(String line) {
+    final match = RegExp(r'^(?:• |☐ |\d+\. )').firstMatch(line);
+    return match?.group(0);
+  }
+
+  String _nextContinuationMarker(String marker) {
+    final numbered = RegExp(r'^(\d+)\. $').firstMatch(marker);
+    if (numbered == null) return marker;
+    final next = int.parse(numbered.group(1)!) + 1;
+    return '$next. ';
   }
 
   @override
@@ -1182,6 +1445,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
                     children: [
                       TextField(
                         controller: contentController,
+                        onChanged: _handleBodyChanged,
                         style: GoogleFonts.inter(
                           fontSize: 17,
                           height: 1.6,
@@ -1276,7 +1540,7 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
         _toolbarIconButton(CupertinoIcons.mic, () {}, color),
         _toolbarIconButton(CupertinoIcons.photo, () {}, color),
         _toolbarIconButton(CupertinoIcons.scribble, () {}, color),
-        _toolbarIconButton(CupertinoIcons.checkmark_square, () => _insertAtCursor('\n☐ '), color),
+        _toolbarIconButton(CupertinoIcons.checkmark_square, () => _toggleLinePrefix('☐ '), color),
       ],
     );
   }
@@ -1290,15 +1554,15 @@ class _EditNoteScreenState extends State<EditNoteScreen> with SingleTickerProvid
         physics: const BouncingScrollPhysics(),
         children: [
           _toolbarIconButton(CupertinoIcons.pencil_outline, () => _wrapSelection('<highlight>', '</highlight>'), secondaryColor, isActive: contentController.isStyleActive('<highlight>|</highlight>')),
-          _textFormatButton('H₁', () => _wrapSelection('<h1>', '</h1>'), 20, primaryColor, isActive: contentController.isStyleActive('<h1>|</h1>')),
-          _textFormatButton('H₂', () => _wrapSelection('<h2>', '</h2>'), 18, primaryColor, isActive: contentController.isStyleActive('<h2>|</h2>')),
-          _textFormatButton('H₃', () => _wrapSelection('<h3>', '</h3>'), 16, primaryColor, isActive: contentController.isStyleActive('<h3>|</h3>')),
+          _textFormatButton('H₁', () => _applyParagraphStyle(1), 20, primaryColor, isActive: _isParagraphStyleActive(1)),
+          _textFormatButton('H₂', () => _applyParagraphStyle(2), 18, primaryColor, isActive: _isParagraphStyleActive(2)),
+          _textFormatButton('H₃', () => _applyParagraphStyle(3), 16, primaryColor, isActive: _isParagraphStyleActive(3)),
           _toolbarIconButton(CupertinoIcons.bold, () => _wrapSelection('**', '**'), primaryColor, isActive: contentController.isStyleActive('**|**')),
           _toolbarIconButton(CupertinoIcons.italic, () => _wrapSelection('_', '_'), primaryColor, isActive: contentController.isStyleActive('_|_')),
           _toolbarIconButton(CupertinoIcons.underline, () => _wrapSelection('<u>', '</u>'), primaryColor, isActive: contentController.isStyleActive('<u>|</u>')),
           _toolbarIconButton(CupertinoIcons.strikethrough, () => _wrapSelection('~~', '~~'), primaryColor, isActive: contentController.isStyleActive('~~|~~')),
-          _toolbarIconButton(CupertinoIcons.list_bullet, () => _insertAtCursor('\n• '), primaryColor),
-          _toolbarIconButton(CupertinoIcons.list_number, () => _insertAtCursor('\n1. '), primaryColor),
+          _toolbarIconButton(CupertinoIcons.list_bullet, () => _toggleLinePrefix('• '), primaryColor, isActive: _isLinePrefixActive('• ')),
+          _toolbarIconButton(CupertinoIcons.list_number, _toggleNumberedList, primaryColor, isActive: _isLinePrefixActive(RegExp(r'^\d+\.\s+'))),
           _toolbarIconButton(CupertinoIcons.quote_bubble, () => _wrapSelection('\n> ', '\n'), primaryColor),
           _toolbarIconButton(CupertinoIcons.text_alignleft, () {}, primaryColor),
           _toolbarIconButton(CupertinoIcons.text_aligncenter, () {}, primaryColor),
